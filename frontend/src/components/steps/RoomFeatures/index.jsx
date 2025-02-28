@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import HighlightCanvas from '../../editor/HighlightCanvas';
 import HighlightToolbar from '../../editor/HighlightToolbar';
 import CompassSelector from './CompassSelector';
-import RoomDimensions from './RoomDimensions'; // Use the moved component
+import RoomDimensions from './RoomDimensions';
 import useStore from '../../../state/store';
 import Button from '../../shared/Button';
 import { detectWalls } from '../../../utils/wallDetection';
@@ -25,7 +25,7 @@ const RoomFeatures = ({ onNext, onBack }) => {
     initHighlightHistory();
   }, [initHighlightHistory]);
   
-  // Auto-detect walls when floor plan is loaded
+  // Improved wall detection function
   const handleAutoDetectWalls = async () => {
     if (!floorPlan.fileUrl) return;
     
@@ -39,6 +39,12 @@ const RoomFeatures = ({ onNext, onBack }) => {
         try {
           const detectedWalls = await detectWalls(img);
           
+          if (detectedWalls.length === 0) {
+            setDetectionStatus('No walls detected. Please highlight walls manually.');
+            setIsDetectingWalls(false);
+            return;
+          }
+          
           // Clear existing walls
           highlights.items
             .filter(item => item.type === 'wall')
@@ -50,9 +56,7 @@ const RoomFeatures = ({ onNext, onBack }) => {
           });
           
           setDetectionStatus(
-            detectedWalls.length > 0 
-              ? `Successfully detected ${detectedWalls.length} wall sections.` 
-              : 'No walls detected. Try manual highlighting instead.'
+            `Successfully detected ${detectedWalls.length} major wall sections.`
           );
         } catch (error) {
           console.error('Wall detection error:', error);
@@ -86,18 +90,21 @@ const RoomFeatures = ({ onNext, onBack }) => {
     ? highlights.items.find(item => item.id === highlights.selected) 
     : null;
   
+  // Define canvas dimensions - making sure they're consistent
+  const canvasWidth = 800;
+  const canvasHeight = 600;
+  
   return (
     <div className="max-w-6xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-6">Step 2: Markup Key Room Features</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="md:col-span-2">
-      
-          <RoomDimensions /> {/* Use the moved component */}
+          <RoomDimensions />
         </div>
         <div>
-        <CompassSelector />
-        <HighlightToolbar />
+          <CompassSelector />
+          <HighlightToolbar />
         </div>
       </div>
       
@@ -156,22 +163,19 @@ const RoomFeatures = ({ onNext, onBack }) => {
           </div>
         )}
 
-        
-
-      <div 
-          className="mb-4 mx-auto" 
+        {/* Canvas Container - Fixed size to match canvas dimensions */}
+        <div 
+          className="flex justify-center items-center mb-4" 
           style={{ 
             width: '100%',
-            height: '800px', 
+            height: canvasHeight,
             position: 'relative',
-            padding: '150px', 
+            overflow: 'hidden',
             backgroundColor: '#f8f9fa'
           }}
         >
-          <HighlightCanvas width={800} height={600} />
+          <HighlightCanvas width={canvasWidth} height={canvasHeight} />
         </div>
-
-
       </div>
       
       <div className="mt-8 flex justify-between">

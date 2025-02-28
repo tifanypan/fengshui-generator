@@ -1,228 +1,239 @@
 // src/utils/wallDetection.js
-
 export const detectWalls = async (imageElement) => {
-    return new Promise((resolve) => {
-      // Create canvas for image processing
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      
-      const width = imageElement.width;
-      const height = imageElement.height;
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      // Draw image on canvas
-      context.drawImage(imageElement, 0, 0, width, height);
-      
-      // Get image data
-      const imageData = context.getImageData(0, 0, width, height);
-      const data = imageData.data;
-      
-      // Find edges using a simple edge detection algorithm
-      // We'll look for significant brightness transitions
-      const edges = new Uint8Array(width * height);
-      const threshold = 30; // Threshold for edge detection
-      
-      // Convert to grayscale and detect edges
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const pos = (y * width + x) * 4;
-          
-          // Convert RGB to grayscale
-          const gray = Math.round(
-            (data[pos] * 0.299 + data[pos + 1] * 0.587 + data[pos + 2] * 0.114)
-          );
-          
-          // Check pixels around current pixel for edges
-          const posTop = ((y - 1) * width + x) * 4;
-          const posBottom = ((y + 1) * width + x) * 4;
-          const posLeft = (y * width + (x - 1)) * 4;
-          const posRight = (y * width + (x + 1)) * 4;
-          
-          const grayTop = Math.round(
-            (data[posTop] * 0.299 + data[posTop + 1] * 0.587 + data[posTop + 2] * 0.114)
-          );
-          const grayBottom = Math.round(
-            (data[posBottom] * 0.299 + data[posBottom + 1] * 0.587 + data[posBottom + 2] * 0.114)
-          );
-          const grayLeft = Math.round(
-            (data[posLeft] * 0.299 + data[posLeft + 1] * 0.587 + data[posLeft + 2] * 0.114)
-          );
-          const grayRight = Math.round(
-            (data[posRight] * 0.299 + data[posRight + 1] * 0.587 + data[posRight + 2] * 0.114)
-          );
-          
-          // Calculate differences
-          const diffX = Math.abs(grayRight - grayLeft);
-          const diffY = Math.abs(grayBottom - grayTop);
-          
-          // If the difference is greater than the threshold, it's an edge
-          edges[y * width + x] = (diffX > threshold || diffY > threshold) ? 255 : 0;
+  return new Promise((resolve) => {
+    // Create canvas for image processing
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    const width = imageElement.width;
+    const height = imageElement.height;
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Draw image on canvas
+    context.drawImage(imageElement, 0, 0, width, height);
+    
+    // Get image data
+    const imageData = context.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    
+    // Pre-process: convert to grayscale and enhance contrast
+    const grayscale = new Uint8Array(width * height);
+    for (let i = 0; i < data.length; i += 4) {
+      // Convert RGB to grayscale
+      const gray = Math.round(
+        (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114)
+      );
+      grayscale[i / 4] = gray;
+    }
+    
+    // Improved edge detection targeting dark lines (walls)
+    const threshold = 60; // Increased threshold to detect fewer edges
+    const edgePixels = [];
+    
+    // Detect horizontal edges (top-bottom walls)
+    for (let y = 1; y < height - 1; y += 2) { // Sample every other pixel to reduce detail
+      for (let x = 1; x < width - 1; x += 2) { // Sample every other pixel to reduce detail
+        const pos = y * width + x;
+        
+        // Check vertical gradient (for horizontal lines)
+        const topPixel = grayscale[pos - width];
+        const bottomPixel = grayscale[pos + width];
+        const verticalDiff = Math.abs(topPixel - bottomPixel);
+        
+        // Check horizontal gradient (for vertical lines)
+        const leftPixel = grayscale[pos - 1];
+        const rightPixel = grayscale[pos + 1];
+        const horizontalDiff = Math.abs(leftPixel - rightPixel);
+        
+        // If this is a dark pixel with significant edge difference
+        if (grayscale[pos] < 80 && (verticalDiff > threshold || horizontalDiff > threshold)) {
+          edgePixels.push({ x, y });
         }
       }
-      
-      // Group edges into potential walls using a simple segmentation approach
-      const visited = new Uint8Array(width * height);
-      const potential_walls = [];
-      
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const index = y * width + x;
-          
-          // If it's an edge and hasn't been visited
-          if (edges[index] === 255 && visited[index] === 0) {
-            // Start a new potential wall
-            const wall = {
-              left: x,
-              top: y,
-              right: x,
-              bottom: y,
-              points: []
-            };
-            
-            // Simple flood fill to find connected edge pixels
-            const stack = [{x, y}];
-            visited[index] = 1;
-            
-            while (stack.length > 0) {
-              const point = stack.pop();
-              wall.points.push(point);
-              
-              // Update bounding box
-              wall.left = Math.min(wall.left, point.x);
-              wall.top = Math.min(wall.top, point.y);
-              wall.right = Math.max(wall.right, point.x);
-              wall.bottom = Math.max(wall.bottom, point.y);
-              
-              // Check adjacent pixels
-              const neighbors = [
-                {x: point.x + 1, y: point.y},
-                {x: point.x - 1, y: point.y},
-                {x: point.x, y: point.y + 1},
-                {x: point.x, y: point.y - 1}
-              ];
-              
-              for (const neighbor of neighbors) {
-                if (
-                  neighbor.x >= 0 && neighbor.x < width &&
-                  neighbor.y >= 0 && neighbor.y < height
-                ) {
-                  const neighborIndex = neighbor.y * width + neighbor.x;
-                  if (edges[neighborIndex] === 255 && visited[neighborIndex] === 0) {
-                    stack.push(neighbor);
-                    visited[neighborIndex] = 1;
-                  }
-                }
-              }
-            }
-            
-            // Only consider it a wall if it has enough points and a reasonable aspect ratio
-            if (wall.points.length > 50) {
-              const width = wall.right - wall.left + 1;
-              const height = wall.bottom - wall.top + 1;
-              
-              // Determine if it's more likely a horizontal or vertical wall
-              const isHorizontal = width > height;
-              
-              // Adjust dimensions based on orientation
-              if (isHorizontal) {
-                // For horizontal walls, we extend their width a bit and make them thinner
-                potential_walls.push({
-                  left: Math.max(0, wall.left - 10),
-                  top: wall.top,
-                  width: width + 20,
-                  height: Math.max(10, height),
-                  type: 'wall',
-                  id: `wall-h-${potential_walls.length}`,
-                });
-              } else {
-                // For vertical walls, we extend their height a bit and make them thinner
-                potential_walls.push({
-                  left: wall.left,
-                  top: Math.max(0, wall.top - 10),
-                  width: Math.max(10, width),
-                  height: height + 20,
-                  type: 'wall',
-                  id: `wall-v-${potential_walls.length}`,
-                });
-              }
-            }
-          }
-        }
+    }
+    
+    // Group edge pixels into line segments
+    const lineSegments = groupIntoLines(edgePixels, width, height);
+    
+    // Convert line segments to wall highlights
+    const walls = convertToWalls(lineSegments, width, height);
+    
+    resolve(walls);
+  });
+};
+
+// Helper function to group edge pixels into line segments
+function groupIntoLines(edgePixels, width, height) {
+  // Sort edge pixels by position to help with grouping
+  edgePixels.sort((a, b) => {
+    if (a.y === b.y) return a.x - b.x;
+    return a.y - b.y;
+  });
+  
+  const horizontalLines = [];
+  const verticalLines = [];
+  
+  // Look for horizontal lines (identify sequences of pixels with same y)
+  let currentLine = null;
+  let lastX = -2;
+  let lastY = -1;
+  
+  for (const pixel of edgePixels) {
+    // If we're on a new row or there's a gap in the x sequence
+    if (pixel.y !== lastY || pixel.x > lastX + 5) { // Increased gap tolerance to join fewer lines
+      if (currentLine && currentLine.length > 20) { // Increased minimum length for a line
+        horizontalLines.push(currentLine);
       }
-      
-      // Merge overlapping or nearby walls of the same orientation
-      const walls = [];
-      const mergedIndices = new Set();
-      
-      for (let i = 0; i < potential_walls.length; i++) {
-        if (mergedIndices.has(i)) continue;
-        
-        const wall1 = potential_walls[i];
-        let merged = false;
-        
-        // Check if this wall is horizontal or vertical
-        const isHorizontal1 = wall1.width > wall1.height;
-        
-        for (let j = i + 1; j < potential_walls.length; j++) {
-          if (mergedIndices.has(j)) continue;
-          
-          const wall2 = potential_walls[j];
-          
-          // Check if wall2 has the same orientation
-          const isHorizontal2 = wall2.width > wall2.height;
-          
-          if (isHorizontal1 === isHorizontal2) {
-            // Check if walls are close or overlapping
-            if (isHorizontal1) {
-              // For horizontal walls, check if they're at similar heights
-              const heightDiff = Math.abs((wall1.top + wall1.height/2) - (wall2.top + wall2.height/2));
-              const overlapsX = (
-                wall1.left <= wall2.left + wall2.width &&
-                wall2.left <= wall1.left + wall1.width
-              );
-              
-              if (heightDiff < 20 && overlapsX) {
-                // Merge horizontal walls
-                wall1.left = Math.min(wall1.left, wall2.left);
-                wall1.width = Math.max(wall1.left + wall1.width, wall2.left + wall2.width) - wall1.left;
-                wall1.top = Math.min(wall1.top, wall2.top);
-                wall1.height = Math.max(wall1.top + wall1.height, wall2.top + wall2.height) - wall1.top;
-                
-                mergedIndices.add(j);
-                merged = true;
-              }
-            } else {
-              // For vertical walls, check if they're at similar x-positions
-              const widthDiff = Math.abs((wall1.left + wall1.width/2) - (wall2.left + wall2.width/2));
-              const overlapsY = (
-                wall1.top <= wall2.top + wall2.height &&
-                wall2.top <= wall1.top + wall1.height
-              );
-              
-              if (widthDiff < 20 && overlapsY) {
-                // Merge vertical walls
-                wall1.top = Math.min(wall1.top, wall2.top);
-                wall1.height = Math.max(wall1.top + wall1.height, wall2.top + wall2.height) - wall1.top;
-                wall1.left = Math.min(wall1.left, wall2.left);
-                wall1.width = Math.max(wall1.left + wall1.width, wall2.left + wall2.width) - wall1.left;
-                
-                mergedIndices.add(j);
-                merged = true;
-              }
-            }
-          }
-        }
-        
-        if (merged) {
-          // If this wall was merged with others, update its ID
-          wall1.id = `wall-merged-${walls.length}`;
-        }
-        
-        walls.push(wall1);
+      currentLine = [pixel];
+    } else if (pixel.x > lastX + 1) { // Allow for small gaps
+      currentLine.push({ x: lastX + 1, y: pixel.y }); // Fill gap
+      currentLine.push(pixel);
+    } else {
+      currentLine.push(pixel);
+    }
+    
+    lastX = pixel.x;
+    lastY = pixel.y;
+  }
+  
+  if (currentLine && currentLine.length > 20) { // Increased minimum length for a line
+    horizontalLines.push(currentLine);
+  }
+  
+  // Look for vertical lines (identify sequences of pixels with same x)
+  edgePixels.sort((a, b) => {
+    if (a.x === b.x) return a.y - b.y;
+    return a.x - b.x;
+  });
+  
+  currentLine = null;
+  let lastX2 = -1;
+  let lastY2 = -2;
+  
+  for (const pixel of edgePixels) {
+    // If we're on a new column or there's a gap in the y sequence
+    if (pixel.x !== lastX2 || pixel.y > lastY2 + 5) { // Increased gap tolerance
+      if (currentLine && currentLine.length > 20) { // Increased minimum length for a line
+        verticalLines.push(currentLine);
       }
-      
-      resolve(walls);
+      currentLine = [pixel];
+    } else if (pixel.y > lastY2 + 1) { // Allow for small gaps
+      currentLine.push({ x: pixel.x, y: lastY2 + 1 }); // Fill gap
+      currentLine.push(pixel);
+    } else {
+      currentLine.push(pixel);
+    }
+    
+    lastX2 = pixel.x;
+    lastY2 = pixel.y;
+  }
+  
+  if (currentLine && currentLine.length > 20) { // Increased minimum length for a line
+    verticalLines.push(currentLine);
+  }
+  
+  return { horizontalLines, verticalLines };
+}
+
+// Convert line segments to wall highlight objects
+function convertToWalls(lineSegments, width, height) {
+  const walls = [];
+  const { horizontalLines, verticalLines } = lineSegments;
+  
+  // Process horizontal lines
+  for (const line of horizontalLines) {
+    if (line.length < width * 0.08) continue; // Increased minimum length requirement
+    
+    const minX = Math.min(...line.map(p => p.x));
+    const maxX = Math.max(...line.map(p => p.x));
+    const avgY = Math.round(line.reduce((sum, p) => sum + p.y, 0) / line.length);
+    
+    walls.push({
+      id: `wall-h-${walls.length}`,
+      type: 'wall',
+      left: minX,
+      top: avgY - 3, // Adjust to center wall thickness
+      width: maxX - minX,
+      height: 6, // Wall thickness
     });
-  };
+  }
+  
+  // Process vertical lines
+  for (const line of verticalLines) {
+    if (line.length < height * 0.08) continue; // Increased minimum length requirement
+    
+    const minY = Math.min(...line.map(p => p.y));
+    const maxY = Math.max(...line.map(p => p.y));
+    const avgX = Math.round(line.reduce((sum, p) => sum + p.x, 0) / line.length);
+    
+    walls.push({
+      id: `wall-v-${walls.length}`,
+      type: 'wall',
+      left: avgX - 3, // Adjust to center wall thickness
+      top: minY,
+      width: 6, // Wall thickness
+      height: maxY - minY,
+    });
+  }
+  
+  // Filter out duplicate or overlapping walls more aggressively
+  return filterOverlappingWalls(walls);
+}
+
+// Remove walls that significantly overlap
+function filterOverlappingWalls(walls) {
+  const filteredWalls = [];
+  
+  for (const wall of walls) {
+    let shouldAdd = true;
+    
+    // Check for major overlaps with existing walls
+    for (const existingWall of filteredWalls) {
+      const overlap = calculateOverlap(wall, existingWall);
+      
+      // If walls overlap by more than 50% (reduced from 70%)
+      if (overlap > 0.5) {
+        shouldAdd = false;
+        break;
+      }
+    }
+    
+    if (shouldAdd) {
+      filteredWalls.push(wall);
+    }
+  }
+  
+  // Limit the number of walls to prevent excessive detection
+  return filteredWalls.slice(0, 30); // Only return up to 30 detected wall segments
+}
+
+// Calculate how much two walls overlap (0-1)
+function calculateOverlap(wall1, wall2) {
+  // Check if no overlap
+  if (
+    wall1.left + wall1.width < wall2.left ||
+    wall2.left + wall2.width < wall1.left ||
+    wall1.top + wall1.height < wall2.top ||
+    wall2.top + wall2.height < wall1.top
+  ) {
+    return 0;
+  }
+  
+  // Calculate overlap area
+  const xOverlap = Math.min(wall1.left + wall1.width, wall2.left + wall2.width) - 
+                  Math.max(wall1.left, wall2.left);
+  
+  const yOverlap = Math.min(wall1.top + wall1.height, wall2.top + wall2.height) - 
+                  Math.max(wall1.top, wall2.top);
+  
+  const overlapArea = xOverlap * yOverlap;
+  
+  // Calculate area of the smaller wall
+  const area1 = wall1.width * wall1.height;
+  const area2 = wall2.width * wall2.height;
+  const smallerArea = Math.min(area1, area2);
+  
+  return overlapArea / smallerArea;
+}

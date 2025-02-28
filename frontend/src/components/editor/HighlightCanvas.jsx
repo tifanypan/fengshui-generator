@@ -5,6 +5,7 @@ import useStore from '../../state/store';
 
 const HighlightCanvas = ({ width, height }) => {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [ctx, setCtx] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState(null);
@@ -22,12 +23,12 @@ const HighlightCanvas = ({ width, height }) => {
     initHighlightHistory
   } = useStore();
   
-  // Tool type colors
+  // Tool type colors - Changed wall color to be more visible
   const highlightColors = {
-    wall: 'rgba(33, 33, 33, 0.5)',
+    wall: 'rgba(76, 175, 80, 0.7)', // Green with higher opacity
     door: 'rgba(244, 67, 54, 0.5)',
     window: 'rgba(33, 150, 243, 0.5)',
-    closet: 'rgba(76, 175, 80, 0.5)',
+    closet: 'rgba(156, 39, 176, 0.5)',
     column: 'rgba(255, 152, 0, 0.5)',
     fireplace: 'rgba(156, 39, 176, 0.5)',
     radiator: 'rgba(121, 85, 72, 0.5)',
@@ -38,6 +39,8 @@ const HighlightCanvas = ({ width, height }) => {
   useEffect(() => {
     if (canvasRef.current) {
       const canvas = canvasRef.current;
+      
+      // Ensure canvas dimensions match what we specify
       canvas.width = width;
       canvas.height = height;
       
@@ -49,10 +52,13 @@ const HighlightCanvas = ({ width, height }) => {
       context.fillRect(0, 0, width, height);
       
       initHighlightHistory();
+      
+      // Log canvas dimensions to verify
+      console.log("Canvas dimensions set to:", width, "x", height);
     }
   }, [width, height, initHighlightHistory]);
   
-  // Load floor plan image
+  // Load floor plan image with better fit approach
   useEffect(() => {
     if (ctx && floorPlan.fileUrl) {
       console.log("Loading image from URL:", floorPlan.fileUrl);
@@ -68,17 +74,22 @@ const HighlightCanvas = ({ width, height }) => {
         ctx.fillRect(0, 0, width, height);
         
         // Calculate scale to fit image while maintaining aspect ratio
+        // IMPORTANT: Using a lower scale (65%) to ensure the entire image fits with padding
         const scale = Math.min(
-          width / img.width,
-          height / img.height
-        ) * 0.95; // 95% of available space
+          (width * 0.65) / img.width,
+          (height * 0.65) / img.height
+        );
         
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
+        // Calculate dimensions, ensuring whole pixels
+        const scaledWidth = Math.floor(img.width * scale);
+        const scaledHeight = Math.floor(img.height * scale);
         
-        // Center the image on canvas
-        const x = (width - scaledWidth) / 2;
-        const y = (height - scaledHeight) / 2;
+        // Center on canvas
+        const x = Math.floor((width - scaledWidth) / 2);
+        const y = Math.floor((height - scaledHeight) / 2);
+        
+        console.log("Positioning image at:", x, y, "with size:", scaledWidth, "x", scaledHeight);
+        console.log("Using scale:", scale);
         
         setImgDimensions({ x, y, width: scaledWidth, height: scaledHeight });
         
@@ -107,36 +118,8 @@ const HighlightCanvas = ({ width, height }) => {
     }
   }, [highlights.items, highlights.selected, imageLoaded]);
   
-  // Function to draw all highlights
-//   const drawHighlights = () => {
-//     if (!ctx || !imageObj) return;
-    
-//     // First redraw the background
-//     ctx.fillStyle = '#ffffff';
-//     ctx.fillRect(0, 0, width, height);
-    
-//     // Draw the image
-//     const { x, y, width: imgWidth, height: imgHeight } = imgDimensions;
-//     ctx.drawImage(imageObj, x, y, imgWidth, imgHeight);
-    
-//     // Draw all highlights
-//     highlights.items.forEach(highlight => {
-//       ctx.fillStyle = highlightColors[highlight.type] || 'rgba(0, 0, 0, 0.3)';
-//       ctx.strokeStyle = highlight.id === highlights.selected ? '#3b82f6' : 'black';
-//       ctx.lineWidth = highlight.id === highlights.selected ? 2 : 1;
-      
-//       ctx.beginPath();
-//       ctx.rect(highlight.left, highlight.top, highlight.width, highlight.height);
-//       ctx.fill();
-//       ctx.stroke();
-//     });
-//   };
-
-// src/components/editor/HighlightCanvas.jsx
-// (update the drawHighlights function to include direction labels)
-
-// Inside the HighlightCanvas component, add:
-const drawHighlights = () => {
+  // Updated drawHighlights function
+  const drawHighlights = () => {
     if (!ctx || !imageObj) return;
     
     // First redraw the background
@@ -152,11 +135,24 @@ const drawHighlights = () => {
       drawDirectionLabels(x, y, imgWidth, imgHeight, floorPlan.compass.orientation);
     }
     
-    // Draw all highlights
+    // Draw all highlights with improved styling
     highlights.items.forEach(highlight => {
       ctx.fillStyle = highlightColors[highlight.type] || 'rgba(0, 0, 0, 0.3)';
-      ctx.strokeStyle = highlight.id === highlights.selected ? '#3b82f6' : 'black';
-      ctx.lineWidth = highlight.id === highlights.selected ? 2 : 1;
+      
+      // Change the selected highlight style
+      if (highlight.id === highlights.selected) {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+      } else {
+        // For walls, make the stroke more visible against black lines
+        if (highlight.type === 'wall') {
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 1;
+        } else {
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 1;
+        }
+      }
       
       ctx.beginPath();
       ctx.rect(highlight.left, highlight.top, highlight.width, highlight.height);
@@ -165,15 +161,13 @@ const drawHighlights = () => {
     });
   };
   
-
-// Updated drawDirectionLabels function
-
-const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
+  // Updated drawDirectionLabels function
+  const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
     if (!ctx) return;
     
-    // Much larger padding to push labels way outside the image
-    const paddingHorizontal = 120; // For left/right
-    const paddingVertical = 120;   // For top/bottom
+    // Adjusted padding for direction labels - smaller to fit better
+    const paddingHorizontal = 30;
+    const paddingVertical = 30;
     
     const roomWidth = floorPlan.dimensions.width; // Width in meters
     const roomLength = floorPlan.dimensions.length; // Length in meters
@@ -203,43 +197,50 @@ const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
     }
     
     // Set font styles
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 14px Arial'; // Smaller font size
     ctx.textBaseline = 'middle';
     
-    // Left side label
+    // Draw dimension labels closer to the image
+    // Left side
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e74c3c'; // Direction color
     ctx.fillText(directions.left, x - paddingHorizontal, y + imgHeight/2 - 15);
     ctx.fillStyle = '#333333'; // Dimension color
     ctx.fillText(lengthText, x - paddingHorizontal, y + imgHeight/2 + 15);
     
-    // Right side label
+    // Right side
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e74c3c';
     ctx.fillText(directions.right, x + imgWidth + paddingHorizontal, y + imgHeight/2 - 15);
     ctx.fillStyle = '#333333';
     ctx.fillText(lengthText, x + imgWidth + paddingHorizontal, y + imgHeight/2 + 15);
     
-    // Top label
+    // Top
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e74c3c';
     ctx.fillText(directions.top, x + imgWidth/2, y - paddingVertical + 15);
     ctx.fillStyle = '#333333';
-    ctx.fillText(widthText, x + imgWidth/2, y - paddingVertical + 45);
+    ctx.fillText(widthText, x + imgWidth/2, y - paddingVertical + 35);
     
-    // Bottom label
+    // Bottom
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e74c3c';
-    ctx.fillText(directions.bottom, x + imgWidth/2, y + imgHeight + paddingVertical - 45);
+    ctx.fillText(directions.bottom, x + imgWidth/2, y + imgHeight + paddingVertical - 35);
     ctx.fillStyle = '#333333';
     ctx.fillText(widthText, x + imgWidth/2, y + imgHeight + paddingVertical - 15);
   };
-
-  // Handle canvas mouse events
+  
+  // Handle canvas mouse events with adjusted coordinates for centering
   const handleMouseDown = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvasRef.current.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvasRef.current.height / rect.height);
+    
+    // Important: Calculate the correct mouse position based on the displayed canvas size
+    // This ensures coordinates match regardless of container scaling
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     // Check if clicking on an existing highlight
     let clickedHighlight = null;
@@ -272,8 +273,13 @@ const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
     if (!isDrawing) return;
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvasRef.current.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvasRef.current.height / rect.height);
+    
+    // Use the same scaling factor for consistent coordinates
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     // Redraw the scene with temporary rectangle
     if (ctx && imageObj) {
@@ -287,7 +293,7 @@ const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
       const height = Math.abs(startPoint.y - y);
       
       ctx.fillStyle = highlightColors[highlights.activeType];
-      ctx.strokeStyle = 'black';
+      ctx.strokeStyle = highlights.activeType === 'wall' ? 'white' : 'black';
       ctx.lineWidth = 1;
       
       ctx.beginPath();
@@ -301,8 +307,13 @@ const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
     if (!isDrawing) return;
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvasRef.current.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvasRef.current.height / rect.height);
+    
+    // Use the same scaling factor for consistent coordinates
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     // Only create a highlight if it has a meaningful size
     if (Math.abs(startPoint.x - x) > 5 && Math.abs(startPoint.y - y) > 5) {
@@ -331,7 +342,7 @@ const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
   };
   
   return (
-    <div className="relative w-full h-full border border-gray-300 bg-white">
+    <div ref={containerRef} className="relative w-full h-full border border-gray-300 bg-white">
       {!imageLoaded && floorPlan.fileUrl && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70 z-10">
           <p className="text-gray-700">Loading floor plan image...</p>
@@ -348,7 +359,7 @@ const drawDirectionLabels = (x, y, imgWidth, imgHeight, orientation) => {
         ref={canvasRef} 
         width={width}
         height={height}
-        className="w-full h-full"
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
