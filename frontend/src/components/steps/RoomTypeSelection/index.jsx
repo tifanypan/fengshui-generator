@@ -1,3 +1,4 @@
+// src/components/steps/RoomTypeSelection/index.jsx
 import React from 'react';
 import RoomTypeSelector from './RoomTypeSelector';
 import OccupantDetails from './OccupantDetails';
@@ -8,6 +9,7 @@ import useStore from '../../../state/store';
 const RoomTypeSelection = ({ onNext }) => {
   const { floorPlan } = useStore();
   
+  // Check if we have required fields - no dimensions check here
   const canProceed = floorPlan.roomType && floorPlan.file;
   
   return (

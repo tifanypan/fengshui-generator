@@ -1,140 +1,177 @@
+// src/components/steps/RoomFeatures/index.jsx
 import React, { useState } from 'react';
-import Grid from '../../editor/Grid';
-import Controls from '../../editor/Controls';
-import ElementsPanel from './ElementsPanel';
+import HighlightCanvas from '../../editor/HighlightCanvas';
+import HighlightToolbar from '../../editor/HighlightToolbar';
 import CompassSelector from './CompassSelector';
-import Door from '../../elements/Door';
-import Window from '../../elements/Window';
-import FixedElement from '../../elements/FixedElement';
+import RoomDimensions from './RoomDimensions'; // Use the moved component
 import useStore from '../../../state/store';
 import Button from '../../shared/Button';
+import { detectWalls } from '../../../utils/wallDetection';
 
 const RoomFeatures = ({ onNext, onBack }) => {
   const { 
     floorPlan, 
-    gridSettings, 
-    setSnapEnabled, 
-    elements, 
-    updateElement, 
-    selectElement, 
-    deselectElement 
+    highlights,
+    removeHighlight,
+    addHighlight,
+    initHighlightHistory
   } = useStore();
   
-  const [isSnapEnabled, setIsSnapEnabled] = useState(gridSettings.snapEnabled);
+  const [isDetectingWalls, setIsDetectingWalls] = useState(false);
+  const [detectionStatus, setDetectionStatus] = useState(null);
   
-  const handleToggleSnap = () => {
-    const newValue = !isSnapEnabled;
-    setIsSnapEnabled(newValue);
-    setSnapEnabled(newValue);
+  // Initialize when component mounts
+  React.useEffect(() => {
+    initHighlightHistory();
+  }, [initHighlightHistory]);
+  
+  // Auto-detect walls when floor plan is loaded
+  const handleAutoDetectWalls = async () => {
+    if (!floorPlan.fileUrl) return;
+    
+    setIsDetectingWalls(true);
+    setDetectionStatus('Detecting walls...');
+    
+    try {
+      // Load image first
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const detectedWalls = await detectWalls(img);
+          
+          // Clear existing walls
+          highlights.items
+            .filter(item => item.type === 'wall')
+            .forEach(wall => removeHighlight(wall.id));
+          
+          // Add detected walls
+          detectedWalls.forEach(wall => {
+            addHighlight(wall);
+          });
+          
+          setDetectionStatus(
+            detectedWalls.length > 0 
+              ? `Successfully detected ${detectedWalls.length} wall sections.` 
+              : 'No walls detected. Try manual highlighting instead.'
+          );
+        } catch (error) {
+          console.error('Wall detection error:', error);
+          setDetectionStatus('Wall detection failed. Please highlight walls manually.');
+        } finally {
+          setIsDetectingWalls(false);
+        }
+      };
+      
+      img.onerror = () => {
+        setDetectionStatus('Failed to load image for wall detection.');
+        setIsDetectingWalls(false);
+      };
+      
+      img.src = floorPlan.fileUrl;
+      
+    } catch (error) {
+      setDetectionStatus('Wall detection failed. Please highlight walls manually.');
+      setIsDetectingWalls(false);
+    }
   };
   
-  const handleElementUpdate = (id, updates) => {
-    updateElement(id, updates);
-  };
+  // Check if we have at least some wall highlights and dimensions
+  const hasWalls = highlights.items.some(item => item.type === 'wall');
+  const hasDimensions = floorPlan.dimensions && 
+                       floorPlan.dimensions.length > 0 && 
+                       floorPlan.dimensions.width > 0;
   
-  const handleElementSelect = (id) => {
-    selectElement(id);
-  };
-  
-  const handleCanvasClick = () => {
-    deselectElement();
-  };
-  
-  const renderElements = () => {
-    return elements.items.map((element) => {
-      if (element.type === 'door') {
-        return (
-          <Door
-            key={element.id}
-            id={element.id}
-            x={element.x}
-            y={element.y}
-            width={element.width}
-            height={element.height}
-            rotation={element.rotation}
-            isOpen={element.isOpen}
-            isSelected={elements.selected === element.id}
-            onSelect={() => handleElementSelect(element.id)}
-            onUpdate={(updates) => handleElementUpdate(element.id, updates)}
-            snapToGrid={isSnapEnabled}
-            gridSize={gridSettings.cellSize}
-          />
-        );
-      } else if (element.type === 'window') {
-        return (
-          <Window
-            key={element.id}
-            id={element.id}
-            x={element.x}
-            y={element.y}
-            width={element.width}
-            height={element.height}
-            rotation={element.rotation}
-            isSelected={elements.selected === element.id}
-            onSelect={() => handleElementSelect(element.id)}
-            onUpdate={(updates) => handleElementUpdate(element.id, updates)}
-            snapToGrid={isSnapEnabled}
-            gridSize={gridSettings.cellSize}
-          />
-        );
-      } else {
-        return (
-          <FixedElement
-            key={element.id}
-            id={element.id}
-            x={element.x}
-            y={element.y}
-            width={element.width}
-            height={element.height}
-            rotation={element.rotation}
-            type={element.type}
-            isSelected={elements.selected === element.id}
-            onSelect={() => handleElementSelect(element.id)}
-            onUpdate={(updates) => handleElementUpdate(element.id, updates)}
-            snapToGrid={isSnapEnabled}
-            gridSize={gridSettings.cellSize}
-          />
-        );
-      }
-    });
-  };
+  // Selected highlight for info panel
+  const selectedHighlight = highlights.selected 
+    ? highlights.items.find(item => item.id === highlights.selected) 
+    : null;
   
   return (
     <div className="max-w-6xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-6">Step 2: Markup Key Room Features</h2>
       
-      <ElementsPanel />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="md:col-span-2">
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <Controls 
-          onToggleSnap={handleToggleSnap} 
-          isSnapEnabled={isSnapEnabled}
-        />
+          <RoomDimensions /> {/* Use the moved component */}
+        </div>
+        <div>
         <CompassSelector />
+        <HighlightToolbar />
+        </div>
       </div>
       
-      <div className="bg-white border border-gray-300 rounded-md p-4 mb-4" onClick={handleCanvasClick}>
-        {floorPlan.fileUrl && (
-          <div className="mb-4 relative">
-            <img 
-              src={floorPlan.fileUrl} 
-              alt="Floor plan" 
-              className="max-w-full mx-auto" 
-              style={{ 
-                maxHeight: '200px', 
-                opacity: gridSettings.backgroundOpacity / 100
-              }} 
-            />
+      {!hasWalls && (
+        <div className="bg-yellow-50 border border-yellow-300 p-4 rounded-md mb-4">
+          <h3 className="text-lg font-medium text-yellow-800 mb-2">Wall Detection</h3>
+          <p className="mb-3">
+            We don't see any walls highlighted yet. You can either auto-detect walls or highlight them manually.
+          </p>
+          <button 
+            className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 mr-3"
+            onClick={handleAutoDetectWalls}
+            disabled={isDetectingWalls}
+          >
+            {isDetectingWalls ? 'Detecting...' : 'Auto-Detect Walls'}
+          </button>
+          <span className="text-sm text-yellow-700">
+            {detectionStatus}
+          </span>
+        </div>
+      )}
+      
+      <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
+        {/* Selected Highlight Info */}
+        {selectedHighlight && (
+          <div className="border-t pt-4 mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-medium">
+                Selected: {selectedHighlight.type.charAt(0).toUpperCase() + selectedHighlight.type.slice(1)}
+              </h3>
+              <button 
+                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                onClick={() => removeHighlight(selectedHighlight.id)}
+              >
+                Delete
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500">Position X</label>
+                <span className="font-medium">{Math.round(selectedHighlight.left)}</span>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500">Position Y</label>
+                <span className="font-medium">{Math.round(selectedHighlight.top)}</span>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500">Width</label>
+                <span className="font-medium">{Math.round(selectedHighlight.width)}</span>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500">Height</label>
+                <span className="font-medium">{Math.round(selectedHighlight.height)}</span>
+              </div>
+            </div>
           </div>
         )}
+
         
-        <Grid 
-          width={800} 
-          height={600} 
-          cellSize={gridSettings.cellSize}
+
+      <div 
+          className="mb-4 mx-auto" 
+          style={{ 
+            width: '100%',
+            height: '800px', 
+            position: 'relative',
+            padding: '150px', 
+            backgroundColor: '#f8f9fa'
+          }}
         >
-          {renderElements()}
-        </Grid>
+          <HighlightCanvas width={800} height={600} />
+        </div>
+
+
       </div>
       
       <div className="mt-8 flex justify-between">
@@ -147,10 +184,22 @@ const RoomFeatures = ({ onNext, onBack }) => {
         
         <Button 
           onClick={onNext}
+          disabled={!hasWalls || !hasDimensions}
         >
           Continue to Step 3
         </Button>
       </div>
+      
+      {(!hasWalls || !hasDimensions) && (
+        <p className="text-sm text-red-600 mt-2 text-right">
+          {!hasWalls && !hasDimensions ? 
+            "Please highlight room walls and enter dimensions before continuing." :
+            !hasWalls ? 
+              "Please highlight at least the walls of your room before continuing." :
+              "Please enter your room dimensions before continuing."
+          }
+        </p>
+      )}
     </div>
   );
 };

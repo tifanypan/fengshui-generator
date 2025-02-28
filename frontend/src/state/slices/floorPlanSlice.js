@@ -5,7 +5,11 @@ export const floorPlanSlice = (set, get) => ({
     fileType: null,
     roomType: null,
     occupants: [],
-    dimensions: { width: 0, height: 0 },
+    dimensions: { 
+      length: 0, 
+      width: 0,
+      unit: 'meters'  // Always stored in meters internally
+    },
     compass: {
       orientation: null, // 'North', 'East', 'South', 'West'
     },
@@ -107,6 +111,12 @@ export const floorPlanSlice = (set, get) => ({
         ...state.floorPlan.compass,
         orientation,
       },
+    },
+  })),
+  setDimensions: (dimensions) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      dimensions,
     },
   })),
 });
