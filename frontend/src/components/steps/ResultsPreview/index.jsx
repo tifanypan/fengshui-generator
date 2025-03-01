@@ -40,18 +40,28 @@ const ResultsPreview = ({ onNext, onBack }) => {
     setError(null);
     
     try {
-      // Prepare data for API call
+      // If no ID (test view), show an informative error
+      if (!floorPlan.id) {
+        setError('Layouts can be generated after completing payment.');
+        setIsLoading(false);
+        return;
+      }
+      
       const lifeGoal = paymentOption.lifeGoalOptimization ? selectedLifeGoal : null;
       
+      const payload = {
+        items: Object.fromEntries(
+          Object.entries(furniture.items).filter(([_, item]) => item.quantity > 0)
+        ),
+        specialConsiderations: furniture.specialConsiderations,
+        hasOutdoorSpace: furniture.hasOutdoorSpace,
+        studioConfig: furniture.studioConfig,
+        primary_life_goal: lifeGoal
+      };
+  
       const response = await generateLayouts(
         floorPlan.id,
-        {
-          items: furniture.items,
-          specialConsiderations: furniture.specialConsiderations,
-          hasOutdoorSpace: furniture.hasOutdoorSpace,
-          studioConfig: furniture.studioConfig
-        },
-        lifeGoal
+        payload
       );
       
       setLayouts(response.data.layouts);
@@ -62,12 +72,66 @@ const ResultsPreview = ({ onNext, onBack }) => {
       }
       
     } catch (err) {
-      console.error('Error generating layouts:', err);
-      setError('Failed to generate layouts. Please try again.');
+      console.error('Full error object:', err);
+      setError(
+        err.response?.data?.detail 
+          ? JSON.stringify(err.response.data.detail) 
+          : 'Failed to generate layouts. Please complete payment to generate full layouts.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
+//   const handleGenerateLayouts = async () => {
+//     setIsLoading(true);
+//     setError(null);
+    
+//     try {
+//       console.log('Floor Plan:', floorPlan);  // Log the entire floorPlan object
+//       console.log('Floor Plan ID:', floorPlan.id);  // Specifically check the ID
+  
+//       if (!floorPlan.id) {
+//         throw new Error('Floor Plan ID is undefined');
+//       }
+  
+//       const lifeGoal = paymentOption.lifeGoalOptimization ? selectedLifeGoal : null;
+      
+//       const payload = {
+//         items: Object.fromEntries(
+//           Object.entries(furniture.items).filter(([_, item]) => item.quantity > 0)
+//         ),
+//         specialConsiderations: furniture.specialConsiderations,
+//         hasOutdoorSpace: furniture.hasOutdoorSpace,
+//         studioConfig: furniture.studioConfig,
+//         primary_life_goal: lifeGoal
+//       };
+  
+//       console.log('Filtered Payload:', JSON.stringify(payload, null, 2));
+      
+//       const response = await generateLayouts(
+//         floorPlan.id,  // Make sure this is a valid ID
+//         payload
+//       );
+      
+//       setLayouts(response.data.layouts);
+      
+//       // Update recommendations if available
+//       if (response.data.layouts.recommendations) {
+//         setRecommendations(response.data.layouts.recommendations);
+//       }
+      
+//     } catch (err) {
+//       console.error('Full error object:', err);
+//       console.error('Error response:', err.response?.data);
+//       setError(
+//         err.response?.data?.detail 
+//           ? JSON.stringify(err.response.data.detail) 
+//           : 'Failed to generate layouts. Please try again.'
+//       );
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
   
   const calculateTotalPrice = () => {
     let total = 0;
