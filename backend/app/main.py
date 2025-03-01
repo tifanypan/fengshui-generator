@@ -1,27 +1,82 @@
+# from fastapi import FastAPI
+# from fastapi.middleware.cors import CORSMiddleware
+# from app.config import settings
+# from app.api import file_upload, room_type
+
+# app = FastAPI(
+#     title="Feng Shui Room Generator API",
+#     description="API for generating Feng Shui optimized room layouts",
+#     version="0.1.0"
+# )
+
+# # Set up CORS
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=settings.CORS_ORIGINS,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# # Include routers
+# app.include_router(file_upload.router)
+# app.include_router(room_type.router)
+
+# @app.get("/")
+# async def root():
+#     return {"message": "Welcome to Feng Shui Room Generator API"}
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.api import file_upload, room_type
+import os
+import logging
 
+from app.api import room_type, file_upload, elements, layouts, test_layouts
+from app.database.models import create_tables
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+# Create app
 app = FastAPI(
     title="Feng Shui Room Generator API",
-    description="API for generating Feng Shui optimized room layouts",
+    description="API for generating feng shui-optimized room layouts",
     version="0.1.0"
 )
 
-# Set up CORS
+# Configure CORS
+origins = [
+    "http://localhost:3000",
+    "http://localhost",
+    os.environ.get("FRONTEND_URL", ""),
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(file_upload.router)
+# Register routers
 app.include_router(room_type.router)
+app.include_router(file_upload.router)
+app.include_router(elements.router)
+app.include_router(layouts.router)
+
+# Include test routes (these would be disabled in production)
+if os.environ.get("ENVIRONMENT", "development") != "production":
+    app.include_router(test_layouts.router)
+
+# Create database tables on startup
+@app.on_event("startup")
+def startup_event():
+    create_tables()
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Feng Shui Room Generator API"}
+    return {"message": "Feng Shui Room Generator API is running"}

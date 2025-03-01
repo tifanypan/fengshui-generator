@@ -11,7 +11,7 @@ import FurnitureCategory from './FurnitureCategory';
 import SpecialConsiderations from './SpecialConsiderations';
 import CustomFurniture from './CustomFurniture';
 import StudioConfig from './StudioConfig';
-import RoomTypeChanger from './RoomTypeChanger';
+// import RoomTypeChanger from './RoomTypeChanger';
 
 const FurnitureSelection = ({ onNext, onBack }) => {
   const { 
@@ -68,7 +68,7 @@ const FurnitureSelection = ({ onNext, onBack }) => {
             </p>
           </div>
           <div className="mt-3 md:mt-0">
-            <RoomTypeChanger />
+            {/* <RoomTypeChanger /> */}
           </div>
         </div>
       </div>
@@ -90,19 +90,7 @@ const FurnitureSelection = ({ onNext, onBack }) => {
           <span className="font-medium">I have a patio or balcony</span>
         </label>
       </div>
-      
-      {/* Pet Option */}
-      <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={hasPets}
-            onChange={handlePetToggle}
-            className="mr-2"
-          />
-          <span className="font-medium">I have pets</span>
-        </label>
-      </div>
+  
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="md:col-span-2">

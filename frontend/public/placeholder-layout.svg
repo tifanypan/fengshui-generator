@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Room background -->
+  <rect width="800" height="600" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+  
+  <!-- Grid lines -->
+  <g stroke="#e5e7eb" stroke-width="1">
+    <!-- Vertical grid lines -->
+    <line x1="100" y1="0" x2="100" y2="600"/>
+    <line x1="200" y1="0" x2="200" y2="600"/>
+    <line x1="300" y1="0" x2="300" y2="600"/>
+    <line x1="400" y1="0" x2="400" y2="600"/>
+    <line x1="500" y1="0" x2="500" y2="600"/>
+    <line x1="600" y1="0" x2="600" y2="600"/>
+    <line x1="700" y1="0" x2="700" y2="600"/>
+    
+    <!-- Horizontal grid lines -->
+    <line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="300" x2="800" y2="300"/>
+    <line x1="0" y1="400" x2="800" y2="400"/>
+    <line x1="0" y1="500" x2="800" y2="500"/>
+  </g>
+  
+  <!-- Placeholder furniture outlines -->
+  <g fill="none" stroke="#9ca3af" stroke-width="2" stroke-dasharray="5,5">
+    <!-- Bed -->
+    <rect x="500" y="150" width="250" height="180" rx="10"/>
+    
+    <!-- Desk -->
+    <rect x="150" y="400" width="180" height="80" rx="5"/>
+    
+    <!-- Chair -->
+    <rect x="210" y="490" width="60" height="60" rx="5"/>
+    
+    <!-- Dresser -->
+    <rect x="50" y="150" width="120" height="60" rx="5"/>
+    
+    <!-- Bookshelf -->
+    <rect x="50" y="250" width="100" height="40" rx="5"/>
+  </g>
+  
+  <!-- Text labels -->
+  <g font-family="Arial, sans-serif" font-size="14" fill="#6b7280">
+    <text x="625" y="240" text-anchor="middle">Bed</text>
+    <text x="240" y="440" text-anchor="middle">Desk</text>
+    <text x="240" y="520" text-anchor="middle">Chair</text>
+    <text x="110" y="180" text-anchor="middle">Dresser</text>
+    <text x="100" y="270" text-anchor="middle">Shelf</text>
+  </g>
+  
+  <!-- Bagua Areas (faded) -->
+  <g fill-opacity="0.1" stroke="#9ca3af" stroke-width="1">
+    <!-- Career -->
+    <rect x="0" y="0" width="266" height="200" fill="#0284c7"/>
+    <text x="133" y="100" font-family="Arial, sans-serif" font-size="16" fill="#0284c7" text-anchor="middle">Career</text>
+    
+    <!-- Wealth -->
+    <rect x="534" y="0" width="266" height="200" fill="#65a30d"/>
+    <text x="667" y="100" font-family="Arial, sans-serif" font-size="16" fill="#65a30d" text-anchor="middle">Wealth</text>
+    
+    <!-- Relationships -->
+    <rect x="534" y="400" width="266" height="200" fill="#e11d48"/>
+    <text x="667" y="500" font-family="Arial, sans-serif" font-size="16" fill="#e11d48" text-anchor="middle">Relationships</text>
+    
+    <!-- Knowledge -->
+    <rect x="0" y="400" width="266" height="200" fill="#4f46e5"/>
+    <text x="133" y="500" font-family="Arial, sans-serif" font-size="16" fill="#4f46e5" text-anchor="middle">Knowledge</text>
+    
+    <!-- Center -->
+    <rect x="266" y="200" width="268" height="200" fill="#ca8a04"/>
+    <text x="400" y="300" font-family="Arial, sans-serif" font-size="16" fill="#ca8a04" text-anchor="middle">Center</text>
+  </g>
+  
+  <!-- Compass directions -->
+  <g font-family="Arial, sans-serif" font-weight="bold" font-size="18" fill="#1f2937">
+    <text x="400" y="25" text-anchor="middle">N</text>
+    <text x="400" y="585" text-anchor="middle">S</text>
+    <text x="15" y="300" text-anchor="middle">W</text>
+    <text x="785" y="300" text-anchor="middle">E</text>
+  </g>
+  
+  <!-- Center text -->
+  <text x="400" y="300" font-family="Arial, sans-serif" font-size="20" fill="#9ca3af" text-anchor="middle" font-style="italic">Feng Shui Layout</text>
+</svg>
