@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import useStore from '../../../state/store';
 
 const RoomDimensions = () => {
-  const { floorPlan, setDimensions } = useStore();
+  const { floorPlan, setFloorPlanDimensions } = useStore();
   const [unit, setUnit] = useState('feet-inches'); // 'feet-inches', 'feet', 'meters'
   const [lengthFeet, setLengthFeet] = useState('');
   const [lengthInches, setLengthInches] = useState('');
@@ -31,13 +31,13 @@ const RoomDimensions = () => {
     // Only update if we have valid numbers
     if (!isNaN(lengthInMeters) && !isNaN(widthInMeters) && 
         lengthInMeters > 0 && widthInMeters > 0) {
-      setDimensions({
+      setFloorPlanDimensions({
         length: lengthInMeters,
         width: widthInMeters,
         unit: 'meters'
       });
     }
-  }, [lengthFeet, lengthInches, widthFeet, widthInches, lengthMeters, widthMeters, unit, setDimensions]);
+  }, [lengthFeet, lengthInches, widthFeet, widthInches, lengthMeters, widthMeters, unit, setFloorPlanDimensions]);
   
   return (
     <div className="mb-6 p-4 border border-gray-300 rounded-md bg-white">

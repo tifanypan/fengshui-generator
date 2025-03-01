@@ -11,6 +11,12 @@ export const floorPlanSlice = (set, get) => ({
       width: 0,
       unit: 'meters'  // Always stored in meters internally
     },
+    imageDimensions: {
+      width: 0,
+      height: 0,
+      naturalWidth: 0,
+      naturalHeight: 0
+    },
     compass: {
       orientation: null, // 'North', 'East', 'South', 'West'
     },
@@ -72,10 +78,17 @@ export const floorPlanSlice = (set, get) => ({
     },
   })),
     
-  setDimensions: (dimensions) => set((state) => ({
+  setFloorPlanDimensions: (dimensions) => set((state) => ({
     floorPlan: {
       ...state.floorPlan,
       dimensions,
+    },
+  })),
+  
+  setFloorPlanImageDimensions: (imageDimensions) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      imageDimensions,
     },
   })),
     

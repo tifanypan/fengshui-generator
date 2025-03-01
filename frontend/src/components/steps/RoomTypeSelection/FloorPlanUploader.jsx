@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import useStore from '../../../state/store';
 import Button from '../../shared/Button';
 import { uploadFloorPlan } from '../../../api/floorPlan';
 import RoomTypeSelector from '../RoomTypeSelection/RoomTypeSelector';
-
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_FILE_TYPES = {
@@ -17,15 +16,46 @@ const ACCEPTED_FILE_TYPES = {
 };
 
 const FloorPlanUploader = () => {
-  const { floorPlan, setFloorPlanFile, setFloorPlanId, setError } = useStore();
+  const { floorPlan, setFloorPlanFile, setFloorPlanId, setFloorPlanDimensions, setError } = useStore();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'success', 'error'
   const [retryCount, setRetryCount] = useState(0);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const previewImageRef = useRef(null);
   
   // Debug: Log the current state of floorPlan when component mounts or state changes
   useEffect(() => {
     console.log("Current floorPlan state:", floorPlan);
   }, [floorPlan]);
+  
+  // Calculate image dimensions when a file is loaded
+  useEffect(() => {
+    if (floorPlan.fileUrl && previewImageRef.current) {
+      const img = previewImageRef.current;
+      
+      const handleImageLoad = () => {
+        // Get natural dimensions of the image
+        const naturalWidth = img.naturalWidth;
+        const naturalHeight = img.naturalHeight;
+        
+        // Use natural dimensions for accurate scaling
+        setImageDimensions({
+          width: naturalWidth,
+          height: naturalHeight
+        });
+        
+        console.log("Image dimensions:", naturalWidth, "x", naturalHeight);
+      };
+      
+      // Set up the load handler
+      img.onload = handleImageLoad;
+      
+      // If the image is already loaded, call the handler manually
+      if (img.complete) {
+        handleImageLoad();
+      }
+    }
+  }, [floorPlan.fileUrl]);
   
   // Verify if the floor plan ID persists across renders
   useEffect(() => {
@@ -85,6 +115,15 @@ const FloorPlanUploader = () => {
           const floorPlanId = response.data.floor_plan_id;
           console.log('Upload successful, floor plan ID:', floorPlanId);
           
+          // Store the dimensions from the backend if available
+          if (response.data.dimensions) {
+            setFloorPlanDimensions({
+              width: response.data.dimensions.width || 0,
+              length: response.data.dimensions.height || 0,
+              unit: 'meters'
+            });
+          }
+          
           // Make sure we set the ID in state
           setFloorPlanId(floorPlanId);
           setUploadStatus('success');
@@ -129,7 +168,7 @@ const FloorPlanUploader = () => {
         setIsUploading(false);
       }
     }
-  }, [floorPlan.roomType, setFloorPlanFile, setFloorPlanId, setError, floorPlan.id]);
+  }, [floorPlan.roomType, setFloorPlanFile, setFloorPlanId, setFloorPlanDimensions, setError, floorPlan.id]);
   
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -142,6 +181,7 @@ const FloorPlanUploader = () => {
     setFloorPlanFile(null);
     setFloorPlanId(null); // Also clear the ID when the file is removed
     setUploadStatus(null);
+    setImageDimensions({ width: 0, height: 0 });
   };
   
   const handleRetryUpload = () => {
@@ -157,11 +197,36 @@ const FloorPlanUploader = () => {
     return 'text-yellow-600';
   };
   
+  // Calculate dimensions display
+  const getDimensionsDisplay = () => {
+    // Get dimensions from the floorPlan store
+    const { width, length } = floorPlan.dimensions || { width: 0, length: 0 };
+    
+    // If user has entered dimensions, use those
+    if (width > 0 && length > 0) {
+      // Convert to feet and inches for display
+      const widthInFeet = Math.floor(width * 3.28084);
+      const widthInches = Math.round((width * 3.28084 - widthInFeet) * 12);
+      const lengthInFeet = Math.floor(length * 3.28084);
+      const lengthInches = Math.round((length * 3.28084 - lengthInFeet) * 12);
+      
+      return {
+        metric: `${width.toFixed(2)}m × ${length.toFixed(2)}m`,
+        imperial: `${widthInFeet}' ${widthInches}" × ${lengthInFeet}' ${lengthInches}"`
+      };
+    }
+    
+    // Otherwise return empty strings
+    return { metric: '', imperial: '' };
+  };
+  
+  const dimensions = getDimensionsDisplay();
+  
   return (
     <div className="mb-6">
       <h3 className="text-lg font-medium mb-2">Upload Floor Plan</h3>
 
-<RoomTypeSelector />
+      <RoomTypeSelector />
 
       
       {!floorPlan.file ? (
@@ -185,12 +250,15 @@ const FloorPlanUploader = () => {
               <p className="text-sm text-gray-500 mt-2">
                 Supported formats: PDF, PNG, JPEG, HEIC, SVG, DXF (max 10MB)
               </p>
+              <p className="text-sm text-blue-600 font-medium mt-4">
+                Your floor plan will be used to display feng shui furniture arrangements
+              </p>
             </>
           )}
         </div>
       ) : (
         <div className="border rounded-lg p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
             <div>
               <p className="font-medium">{floorPlan.file.name}</p>
               <p className="text-sm text-gray-500">
@@ -206,8 +274,16 @@ const FloorPlanUploader = () => {
                   {uploadStatus === 'success' ? 'Upload successful!' : 'Upload failed'}
                 </p>
               )}
+              
+              {/* Display dimensions if available */}
+              {dimensions.metric && (
+                <div className="text-sm text-gray-600">
+                  <p>Dimensions: {dimensions.metric}</p>
+                  <p>({dimensions.imperial})</p>
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 mt-3 sm:mt-0">
               <Button variant="secondary" onClick={removeFile}>
                 Remove
               </Button>
@@ -220,11 +296,12 @@ const FloorPlanUploader = () => {
           </div>
           
           {floorPlan.fileUrl && floorPlan.file.type.startsWith('image/') && (
-            <div className="mt-4">
+            <div className="mt-4 border rounded overflow-hidden max-h-80">
               <img 
+                ref={previewImageRef}
                 src={floorPlan.fileUrl} 
                 alt="Floor plan preview" 
-                className="max-h-60 max-w-full mx-auto"
+                className="max-w-full max-h-80 mx-auto"
               />
             </div>
           )}
@@ -259,6 +336,13 @@ const FloorPlanUploader = () => {
               <p className="text-xs text-yellow-800">Current room type: <span className="font-mono">{floorPlan.roomType || 'not set'}</span></p>
             </div>
           </div>
+          
+          {/* Image dimensions display */}
+          {imageDimensions.width > 0 && (
+            <div className="mt-2 text-xs text-gray-500">
+              Image dimensions: {imageDimensions.width} × {imageDimensions.height} pixels
+            </div>
+          )}
         </div>
       )}
       
