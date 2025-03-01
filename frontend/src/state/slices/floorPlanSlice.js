@@ -17,6 +17,7 @@ export const floorPlanSlice = (set, get) => ({
       naturalWidth: 0,
       naturalHeight: 0
     },
+    calibration: null, // Will store room corner points and related data
     compass: {
       orientation: null, // 'North', 'East', 'South', 'West'
     },
@@ -91,6 +92,13 @@ export const floorPlanSlice = (set, get) => ({
       imageDimensions,
     },
   })),
+  
+  setRoomCalibration: (calibration) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      calibration,
+    },
+  })),
     
   setLoading: (isLoading) => set((state) => ({
     floorPlan: {
@@ -105,7 +113,6 @@ export const floorPlanSlice = (set, get) => ({
       error,
     },
   })),
-
      
   setCellSize: (cellSize) => set((state) => ({
     gridSettings: {
