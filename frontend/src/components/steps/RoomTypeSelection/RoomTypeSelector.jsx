@@ -1,10 +1,9 @@
-// src/components/steps/RoomTypeSelection/RoomTypeSelector.jsx
 import React from 'react';
 import useStore from '../../../state/store';
 
 const RoomTypeSelector = () => {
   const { floorPlan, setRoomType } = useStore();
-  
+
   const roomTypes = [
     { id: 'bedroom', label: 'Bedroom' },
     { id: 'office', label: 'Office' },
@@ -15,25 +14,24 @@ const RoomTypeSelector = () => {
     { id: 'kitchen_dining_living', label: 'Kitchen-Dining-Living' },
     { id: 'studio', label: 'Studio (Multi-purpose)' },
   ];
-  
+
   return (
-    <div className="mb-6">
-      <h3 className="text-lg font-medium mb-2">Select Room Type</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="mb-4">
+      <label htmlFor="roomType" className="block text-sm font-medium text-gray-700">
+        Select Room Type
+      </label>
+      <select
+        id="roomType"
+        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+        value={floorPlan.roomType || ''}
+        onChange={(e) => setRoomType(e.target.value)}
+      >
         {roomTypes.map((type) => (
-          <button
-            key={type.id}
-            className={`p-4 border rounded-lg transition-colors ${
-              floorPlan.roomType === type.id 
-                ? 'bg-blue-100 border-blue-500' 
-                : 'bg-white border-gray-300 hover:bg-gray-50'
-            }`}
-            onClick={() => setRoomType(type.id)}
-          >
+          <option key={type.id} value={type.id}>
             {type.label}
-          </button>
+          </option>
         ))}
-      </div>
+      </select>
     </div>
   );
 };

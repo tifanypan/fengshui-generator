@@ -21,7 +21,7 @@ async def initialize_room_types(db: Session = Depends(get_db)):
     if db.query(RoomType).count() > 0:
         return {"message": "Room types already initialized"}
     
-    # Define standard room types
+    # ✅ Correctly indented list
     room_types = [
         {"code": "bedroom", "name": "Bedroom"},
         {"code": "office", "name": "Office"},
@@ -29,8 +29,10 @@ async def initialize_room_types(db: Session = Depends(get_db)):
         {"code": "studio", "name": "Studio"},
         {"code": "living_room", "name": "Living Room"},
         {"code": "dining_room", "name": "Dining Room"},
+        {"code": "kitchen_dining", "name": "Kitchen + Dining"},
+        {"code": "kitchen_dining_living", "name": "Kitchen + Dining + Living"},
     ]
-    
+
     # Add room types to database
     for rt in room_types:
         db.add(RoomType(code=rt["code"], name=rt["name"]))

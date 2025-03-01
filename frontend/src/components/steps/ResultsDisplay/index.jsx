@@ -13,53 +13,126 @@ const ResultsDisplay = ({ onBack }) => {
   const [activeLayout, setActiveLayout] = useState('optimal_layout');
   const [error, setError] = useState(null);
   
+  // Debug panel state for development
+  const [showDebug, setShowDebug] = useState(true);
+  const [manualId, setManualId] = useState(floorPlan.id || 1);
+  
   // Generate layouts when component mounts
   useEffect(() => {
+    console.log("ResultsDisplay mounted with floorPlan:", floorPlan);
+    
     const fetchLayouts = async () => {
       try {
         // Check if we have a valid floor plan ID
         if (!floorPlan.id) {
-          console.log("No floor plan ID available, using mock data");
-          // For testing - use mock data when no floor plan ID is available
-          setTimeout(() => {
-            setLayouts(generateMockLayouts());
-            setIsLoading(false);
-          }, 1500);
-          return;
+          console.warn("No floor plan ID available in state, using ID=1 for development");
+          // Continue without throwing error - will use ID=1 for testing
         }
         
-        console.log("Generating layouts for floor plan ID:", floorPlan.id);
+        // Use ID from state or fallback to 1 for development
+        const floorPlanIdToUse = floorPlan.id || 1;
+        console.log("Generating layouts for floor plan ID:", floorPlanIdToUse);
+        
         const lifeGoal = payment.lifeGoalOptimization ? payment.lifeGoal : null;
         
+        // Prepare payload carefully
         const payload = {
-          items: Object.fromEntries(
-            Object.entries(furniture.items).filter(([_, item]) => item.quantity > 0)
-          ),
+          items: Object.entries(furniture.items)
+            .filter(([_, item]) => item.quantity > 0)
+            .reduce((acc, [id, item]) => {
+              // Convert to the format expected by backend
+              acc[id] = {
+                quantity: item.quantity,
+                dimensions: item.dimensions,
+                customName: item.customName,
+                type: item.type,
+                fengShuiRole: item.fengShuiRole
+              };
+              return acc;
+            }, {}),
           specialConsiderations: furniture.specialConsiderations,
           hasOutdoorSpace: furniture.hasOutdoorSpace,
           studioConfig: furniture.studioConfig,
         };
         
-        const response = await generateLayouts(
-          floorPlan.id,
-          payload,
-          lifeGoal
-        );
+        // Log the payload to debug
+        console.log("Payload for layouts API:", JSON.stringify(payload, null, 2));
         
-        setLayouts(response.data.layouts);
+        try {
+          const response = await generateLayouts(
+            floorPlanIdToUse,
+            payload,
+            lifeGoal
+          );
+          
+          console.log("API response:", response);
+          
+          // API or mock data will be in response.data.layouts
+          setLayouts(response.data.layouts);
+          setError(null);
+        } catch (err) {
+          console.error('Error from API call:', err);
+          setError(`API Error: ${err.message}. Using fallback data.`);
+          
+          // Create mock data for demonstration
+          const mockLayouts = generateMockLayouts();
+          setLayouts(mockLayouts);
+        }
       } catch (err) {
-        console.error('Error generating layouts:', err);
-        setError('Failed to generate layouts. Using sample data instead.');
+        console.error('General error in fetchLayouts:', err);
+        setError(`Error: ${err.message}. Using fallback data.`);
         
-        // Fallback to mock data if API call fails
-        setLayouts(generateMockLayouts());
+        // Create mock data for demonstration
+        const mockLayouts = generateMockLayouts();
+        setLayouts(mockLayouts);
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchLayouts();
-  }, []);
+  }, [floorPlan, furniture, payment]);
+  
+  // Function to manually retry with a specific ID
+  const retryWithId = async (id) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log(`Manually retrying with ID=${id}`);
+      
+      const lifeGoal = payment.lifeGoalOptimization ? payment.lifeGoal : null;
+      
+      // Simple payload for testing
+      const payload = {
+        items: Object.entries(furniture.items)
+          .filter(([_, item]) => item.quantity > 0)
+          .reduce((acc, [id, item]) => {
+            acc[id] = {
+              quantity: item.quantity,
+              dimensions: item.dimensions
+            };
+            return acc;
+          }, {}),
+        specialConsiderations: {}
+      };
+      
+      const response = await generateLayouts(id, payload, lifeGoal);
+      
+      console.log("Manual retry response:", response);
+      setLayouts(response.data.layouts);
+      setError(null);
+    } catch (err) {
+      console.error('Error in manual retry:', err);
+      setError(`Manual retry failed: ${err.message}`);
+      
+      // Fallback to mock data
+      const mockLayouts = generateMockLayouts();
+      setLayouts(mockLayouts);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Generate mock layouts for testing when API is not available
   const generateMockLayouts = () => {
@@ -67,107 +140,14 @@ const ResultsDisplay = ({ onBack }) => {
       optimal_layout: {
         id: "mock_optimal",
         strategy: "optimal",
-        furniture_placements: [
-          {
-            item_id: "bed_1",
-            base_id: "queen_bed",
-            name: "Queen Bed",
-            x: 120,
-            y: 80,
-            width: 60,
-            height: 80,
-            rotation: 0,
-            in_command_position: true,
-            against_wall: true,
-            feng_shui_quality: "excellent"
-          },
-          {
-            item_id: "dresser_1",
-            base_id: "dresser",
-            name: "Dresser",
-            x: 220,
-            y: 50,
-            width: 60,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: true,
-            feng_shui_quality: "good"
-          },
-          {
-            item_id: "nightstand_1",
-            base_id: "nightstand",
-            name: "Nightstand",
-            x: 190,
-            y: 80,
-            width: 18,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: false,
-            feng_shui_quality: "good"
-          },
-          {
-            item_id: "nightstand_2",
-            base_id: "nightstand",
-            name: "Nightstand",
-            x: 90,
-            y: 80,
-            width: 18,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: false,
-            feng_shui_quality: "good"
-          }
-        ],
+        furniture_placements: createMockFurniturePlacements(),
         tradeoffs: [],
         feng_shui_score: 92
       },
       space_conscious_layout: {
         id: "mock_space",
         strategy: "space_conscious",
-        furniture_placements: [
-          {
-            item_id: "bed_1",
-            base_id: "queen_bed",
-            name: "Queen Bed",
-            x: 100,
-            y: 60,
-            width: 60,
-            height: 80,
-            rotation: 0,
-            in_command_position: true,
-            against_wall: true,
-            feng_shui_quality: "good"
-          },
-          {
-            item_id: "dresser_1",
-            base_id: "dresser",
-            name: "Dresser",
-            x: 200,
-            y: 80,
-            width: 60,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: true,
-            feng_shui_quality: "fair"
-          },
-          {
-            item_id: "nightstand_1",
-            base_id: "nightstand",
-            name: "Nightstand",
-            x: 170,
-            y: 60,
-            width: 18,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: false,
-            feng_shui_quality: "fair"
-          }
-        ],
+        furniture_placements: createMockFurniturePlacements(0.9),
         tradeoffs: [
           {
             item_id: "dresser_1",
@@ -182,60 +162,7 @@ const ResultsDisplay = ({ onBack }) => {
       life_goal_layout: payment.lifeGoalOptimization ? {
         id: "mock_life_goal",
         strategy: "life_goal",
-        furniture_placements: [
-          {
-            item_id: "bed_1",
-            base_id: "queen_bed",
-            name: "Queen Bed",
-            x: 140,
-            y: 100,
-            width: 60,
-            height: 80,
-            rotation: 0,
-            in_command_position: true,
-            against_wall: true,
-            feng_shui_quality: "excellent"
-          },
-          {
-            item_id: "dresser_1",
-            base_id: "dresser",
-            name: "Dresser",
-            x: 240,
-            y: 70,
-            width: 60,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: true,
-            feng_shui_quality: "excellent"
-          },
-          {
-            item_id: "nightstand_1",
-            base_id: "nightstand",
-            name: "Nightstand",
-            x: 210,
-            y: 100,
-            width: 18,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: false,
-            feng_shui_quality: "good"
-          },
-          {
-            item_id: "nightstand_2",
-            base_id: "nightstand",
-            name: "Nightstand",
-            x: 110,
-            y: 100,
-            width: 18,
-            height: 18,
-            rotation: 0,
-            in_command_position: false,
-            against_wall: false,
-            feng_shui_quality: "good"
-          }
-        ],
+        furniture_placements: createMockFurniturePlacements(1.1),
         tradeoffs: [],
         feng_shui_score: 90,
         life_goal: payment.lifeGoal
@@ -248,15 +175,15 @@ const ResultsDisplay = ({ onBack }) => {
           units: "meters"
         },
         bagua_map: {
-          "wealth": { x: 0, y: 0, width: 100, height: 100, element: "wood", life_area: "prosperity", colors: ["purple", "green"] },
-          "fame": { x: 100, y: 0, width: 100, height: 100, element: "fire", life_area: "reputation", colors: ["red"] },
-          "relationships": { x: 200, y: 0, width: 100, height: 100, element: "earth", life_area: "love", colors: ["pink", "red", "white"] },
-          "family": { x: 0, y: 100, width: 100, height: 100, element: "wood", life_area: "family", colors: ["green"] },
-          "center": { x: 100, y: 100, width: 100, height: 100, element: "earth", life_area: "health", colors: ["yellow", "brown"] },
-          "children": { x: 200, y: 100, width: 100, height: 100, element: "metal", life_area: "creativity", colors: ["white", "grey"] },
-          "knowledge": { x: 0, y: 200, width: 100, height: 100, element: "earth", life_area: "wisdom", colors: ["blue", "green"] },
-          "career": { x: 100, y: 200, width: 100, height: 100, element: "water", life_area: "career", colors: ["black", "blue"] },
-          "helpful_people": { x: 200, y: 200, width: 100, height: 100, element: "metal", life_area: "travel", colors: ["grey", "white"] }
+          "wealth": { x: 0, y: 0, width: 140, height: 120, element: "wood", life_area: "prosperity", colors: ["purple", "green"] },
+          "fame": { x: 140, y: 0, width: 140, height: 120, element: "fire", life_area: "reputation", colors: ["red"] },
+          "relationships": { x: 280, y: 0, width: 140, height: 120, element: "earth", life_area: "love", colors: ["pink", "red", "white"] },
+          "family": { x: 0, y: 120, width: 140, height: 120, element: "wood", life_area: "family", colors: ["green"] },
+          "center": { x: 140, y: 120, width: 140, height: 120, element: "earth", life_area: "health", colors: ["yellow", "brown"] },
+          "children": { x: 280, y: 120, width: 140, height: 120, element: "metal", life_area: "creativity", colors: ["white", "grey"] },
+          "knowledge": { x: 0, y: 240, width: 140, height: 120, element: "earth", life_area: "wisdom", colors: ["blue", "green"] },
+          "career": { x: 140, y: 240, width: 140, height: 120, element: "water", life_area: "career", colors: ["black", "blue"] },
+          "helpful_people": { x: 280, y: 240, width: 140, height: 120, element: "metal", life_area: "travel", colors: ["grey", "white"] }
         }
       },
       recommendations: [
@@ -294,6 +221,91 @@ const ResultsDisplay = ({ onBack }) => {
     return mockData;
   };
   
+  // Helper function to create mock furniture placements
+  const createMockFurniturePlacements = (scaleFactor = 1.0) => {
+    const placements = [];
+    let index = 0;
+    
+    // Get selected furniture from store
+    Object.entries(furniture.items).forEach(([itemId, item]) => {
+      if (item.quantity > 0) {
+        for (let i = 0; i < item.quantity; i++) {
+          placements.push({
+            item_id: `${itemId}_${i}`,
+            base_id: itemId,
+            name: item.customName || formatItemName(itemId),
+            x: (100 + (index * 60) % 300) * scaleFactor,
+            y: (100 + Math.floor((index * 60) / 300) * 60) * scaleFactor,
+            width: item.dimensions?.width || 30,
+            height: item.dimensions?.height || 30,
+            rotation: 0,
+            in_command_position: index === 0,  // First item in command position
+            against_wall: index % 3 === 0,     // Every third item against wall
+            feng_shui_quality: ["excellent", "good", "fair"][index % 3]
+          });
+          index++;
+        }
+      }
+    });
+    
+    // If no furniture selected, add sample furniture
+    if (placements.length === 0) {
+      placements.push(
+        {
+          item_id: "bed_1",
+          base_id: "queen_bed",
+          name: "Queen Bed",
+          x: 120 * scaleFactor,
+          y: 80 * scaleFactor,
+          width: 60,
+          height: 80,
+          rotation: 0,
+          in_command_position: true,
+          against_wall: true,
+          feng_shui_quality: "excellent"
+        },
+        {
+          item_id: "dresser_1",
+          base_id: "dresser",
+          name: "Dresser",
+          x: 220 * scaleFactor,
+          y: 50 * scaleFactor,
+          width: 60,
+          height: 18,
+          rotation: 0,
+          in_command_position: false,
+          against_wall: true,
+          feng_shui_quality: "good"
+        },
+        {
+          item_id: "nightstand_1",
+          base_id: "nightstand",
+          name: "Nightstand",
+          x: 190 * scaleFactor,
+          y: 80 * scaleFactor,
+          width: 18,
+          height: 18,
+          rotation: 0,
+          in_command_position: false,
+          against_wall: false,
+          feng_shui_quality: "good"
+        }
+      );
+    }
+    
+    return placements;
+  };
+  
+  // Format item ID to readable name
+  const formatItemName = (itemId) => {
+    return itemId
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+  
   const handleDownloadPDF = () => {
     // For now, just show an alert - in a real implementation, this would generate a PDF
     alert('PDF Generation: In a production environment, this would generate and download a PDF with your feng shui layout plans.');
@@ -312,21 +324,6 @@ const ResultsDisplay = ({ onBack }) => {
     );
   }
   
-  // Display error
-  if (error && !layouts) {
-    return (
-      <div className="max-w-6xl mx-auto p-4">
-        <h2 className="text-2xl font-bold mb-6">Step 6: Your Feng Shui Results</h2>
-        <div className="bg-white border border-gray-300 rounded-md p-6">
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded mb-4">
-            {error}
-          </div>
-          <Button onClick={onBack}>Go Back</Button>
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div className="max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -337,6 +334,45 @@ const ResultsDisplay = ({ onBack }) => {
           </Button>
         </div>
       </div>
+      
+      {/* Debug Panel for Development - REMOVE FOR PRODUCTION */}
+      {showDebug && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-md p-4 mb-6">
+          <div className="flex justify-between">
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">Debug Panel</h3>
+            <button onClick={() => setShowDebug(false)} className="text-yellow-700">×</button>
+          </div>
+          
+          <div className="mb-3">
+            <p className="text-sm text-yellow-700">
+              <strong>Current Floor Plan ID:</strong> {floorPlan.id || 'Not set'}
+            </p>
+            <p className="text-sm text-yellow-700">
+              <strong>Room Type:</strong> {floorPlan.roomType || 'Not set'}
+            </p>
+            <p className="text-sm text-yellow-700">
+              <strong>Furniture Count:</strong> {Object.values(furniture.items).reduce((count, item) => count + (item.quantity || 0), 0)}
+            </p>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-yellow-700">Test with ID:</label>
+            <input
+              type="number"
+              min="1"
+              value={manualId}
+              onChange={(e) => setManualId(parseInt(e.target.value) || 1)}
+              className="w-16 border rounded px-2 py-1"
+            />
+            <button
+              onClick={() => retryWithId(manualId)}
+              className="px-3 py-1 bg-yellow-200 rounded text-yellow-800"
+            >
+              Retry API
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
         <h3 className="text-lg font-medium text-green-800 mb-2">Payment Successful</h3>
@@ -452,7 +488,6 @@ const ResultsDisplay = ({ onBack }) => {
       </div>
     </div>
   );
-
 };
 
 export default ResultsDisplay;

@@ -163,51 +163,5 @@ export const furnitureSlice = (set, get) => ({
           );
         });
       });
-
-      
-    //   // Add default furniture based on room type
-    //   switch (roomType) {
-    //     case 'bedroom':
-    //       addFurnitureItem('bed', 'queen_bed', 1, { width: 60, height: 80 });
-    //       addFurnitureItem('storage', 'nightstand', 2, { width: 18, height: 18 });
-    //       addFurnitureItem('storage', 'dresser', 1, { width: 60, height: 18 });
-    //       break;
-          
-    //     case 'office':
-    //       addFurnitureItem('desk', 'desk', 1, { width: 48, height: 24 });
-    //       addFurnitureItem('seating', 'office_chair', 1, { width: 24, height: 24 });
-    //       addFurnitureItem('storage', 'bookshelf', 1, { width: 36, height: 12 });
-    //       break;
-          
-    //     case 'bedroom_office':
-    //       addFurnitureItem('bed', 'queen_bed', 1, { width: 60, height: 80 });
-    //       addFurnitureItem('storage', 'nightstand', 1, { width: 18, height: 18 });
-    //       addFurnitureItem('desk', 'desk', 1, { width: 48, height: 24 });
-    //       addFurnitureItem('seating', 'office_chair', 1, { width: 24, height: 24 });
-    //       break;
-          
-    //     case 'living_room':
-    //       addFurnitureItem('seating', 'sofa', 1, { width: 84, height: 36 });
-    //       addFurnitureItem('seating', 'lounge_chair', 1, { width: 30, height: 30 });
-    //       addFurnitureItem('table', 'coffee_table', 1, { width: 40, height: 20 });
-    //       addFurnitureItem('storage', 'tv_stand', 1, { width: 60, height: 18 });
-    //       break;
-          
-    //     case 'dining_room':
-    //       addFurnitureItem('table', 'dining_table', 1, { width: 72, height: 36 });
-    //       addFurnitureItem('seating', 'dining_chair', 4, { width: 18, height: 18 });
-    //       break;
-          
-    //     case 'studio':
-    //       addFurnitureItem('bed', 'full_bed', 1, { width: 54, height: 75 });
-    //       addFurnitureItem('seating', 'sofa', 1, { width: 60, height: 30 });
-    //       addFurnitureItem('table', 'coffee_table', 1, { width: 36, height: 18 });
-    //       addFurnitureItem('desk', 'desk', 1, { width: 48, height: 24 });
-    //       addFurnitureItem('seating', 'office_chair', 1, { width: 24, height: 24 });
-    //       break;
-          
-    //     default:
-    //       break;
-    //   }
     }
   });

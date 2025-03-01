@@ -1,6 +1,6 @@
 export const floorPlanSlice = (set, get) => ({
   floorPlan: {
-    id: null, // Add this property to store the floor plan ID
+    id: null, // Store the floor plan ID
     file: null,
     fileUrl: null,
     fileType: null,
@@ -34,13 +34,22 @@ export const floorPlanSlice = (set, get) => ({
     },
   })),
   
-  // Add this setter function
-  setFloorPlanId: (id) => set((state) => ({
-    floorPlan: {
-      ...state.floorPlan,
-      id,
-    },
-  })),
+  // Updated setter function with logging
+  setFloorPlanId: (id) => {
+    console.log(`Setting floor plan ID to: ${id}`);
+    set((state) => ({
+      floorPlan: {
+        ...state.floorPlan,
+        id,
+      },
+    }));
+    
+    // Verify the change
+    setTimeout(() => {
+      const currentId = get().floorPlan.id;
+      console.log(`Verified floor plan ID is now: ${currentId}`);
+    }, 50);
+  },
     
   setRoomType: (roomType) => set((state) => ({
     floorPlan: {

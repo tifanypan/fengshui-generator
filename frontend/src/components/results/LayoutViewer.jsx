@@ -16,6 +16,14 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
     setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
   };
   
+  // Debug output to console
+  useEffect(() => {
+    if (layouts && layoutData) {
+      console.log('Current layout data:', layoutData);
+      console.log('Furniture placements:', layoutData.furniture_placements);
+    }
+  }, [layouts, layoutData]);
+  
   if (!layoutData) {
     return (
       <div className="bg-white border border-gray-300 rounded-md p-4 mb-4 text-center">
@@ -24,8 +32,9 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
     );
   }
   
-  const roomWidth = layouts.room_analysis?.dimensions?.width || 0;
-  const roomLength = layouts.room_analysis?.dimensions?.length || 0;
+  // Get room dimensions from the layout data or fallback to floorPlan
+  const roomWidth = layouts.room_analysis?.dimensions?.width || floorPlan.dimensions.width || 3;
+  const roomLength = layouts.room_analysis?.dimensions?.length || floorPlan.dimensions.length || 4;
   
   // Calculate scale factor to fit room in viewer
   const maxViewerWidth = 800; // Maximum width of the viewer
@@ -97,32 +106,37 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
           ))}
           
           {/* Furniture Placements */}
-          {furniturePlacements.map((furniture) => (
-            <div
-              key={furniture.item_id}
-              className="absolute"
-              style={{
-                left: furniture.x * scale * zoomLevel,
-                top: furniture.y * scale * zoomLevel,
-                width: furniture.width * scale * zoomLevel,
-                height: furniture.height * scale * zoomLevel,
-                backgroundColor: getFurnitureColor(furniture),
-                border: '1px solid #333',
-                transform: `rotate(${furniture.rotation || 0}deg)`,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: 10 * zoomLevel,
-                color: '#fff',
-                textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {furniture.name}
+          {furniturePlacements && furniturePlacements.length > 0 ? (
+            furniturePlacements.map((furniture, idx) => (
+              <div
+                key={furniture.item_id || `furniture-${idx}`}
+                className="absolute flex justify-center items-center"
+                style={{
+                  left: furniture.x * scale * zoomLevel,
+                  top: furniture.y * scale * zoomLevel,
+                  width: furniture.width * scale * zoomLevel,
+                  height: furniture.height * scale * zoomLevel,
+                  backgroundColor: getFurnitureColor(furniture),
+                  border: '2px solid #333',
+                  borderRadius: '2px',
+                  transform: `rotate(${furniture.rotation || 0}deg)`,
+                  fontSize: 10 * zoomLevel,
+                  color: '#fff',
+                  textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              >
+                {furniture.name || getFurnitureNameById(furniture.base_id)}
+              </div>
+            ))
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+              No furniture placements available
             </div>
-          ))}
+          )}
         </div>
       </div>
       
@@ -185,6 +199,20 @@ const getElementColor = (elementType) => {
 };
 
 const getFurnitureColor = (furniture) => {
+  // Base colors by furniture type
+  const baseColors = {
+    'bed': 'rgba(70, 130, 180, 0.8)',      // Steel Blue
+    'desk': 'rgba(60, 179, 113, 0.8)',     // Medium Sea Green
+    'table': 'rgba(210, 105, 30, 0.8)',    // Chocolate
+    'sofa': 'rgba(147, 112, 219, 0.8)',    // Medium Purple
+    'chair': 'rgba(244, 164, 96, 0.8)',    // Sandy Brown
+    'storage': 'rgba(85, 107, 47, 0.8)',   // Dark Olive Green
+    'bookshelf': 'rgba(139, 69, 19, 0.8)', // Saddle Brown
+  };
+  
+  // Get furniture type from ID
+  const furnitureType = getFurnitureTypeFromId(furniture.base_id);
+  
   // Color based on feng shui quality
   const qualityColors = {
     'excellent': 'rgba(46, 139, 87, 0.8)',   // Green
@@ -193,7 +221,33 @@ const getFurnitureColor = (furniture) => {
     'poor': 'rgba(255, 99, 71, 0.8)'         // Red
   };
   
-  return qualityColors[furniture.feng_shui_quality] || 'rgba(128, 128, 128, 0.8)';
+  // Return color based on quality, or base color if no quality specified
+  return qualityColors[furniture.feng_shui_quality] || baseColors[furnitureType] || 'rgba(128, 128, 128, 0.8)';
+};
+
+const getFurnitureTypeFromId = (id) => {
+  if (!id) return 'unknown';
+  
+  if (id.includes('bed')) return 'bed';
+  if (id.includes('desk')) return 'desk';
+  if (id.includes('table')) return 'table';
+  if (id.includes('sofa')) return 'sofa';
+  if (id.includes('chair')) return 'chair';
+  if (id.includes('shelf') || id.includes('case')) return 'bookshelf';
+  if (id.includes('dresser') || id.includes('cabinet') || id.includes('drawer')) return 'storage';
+  
+  return 'unknown';
+};
+
+const getFurnitureNameById = (id) => {
+  if (!id) return 'Unknown Item';
+  
+  // Convert snake_case or camelCase to Title Case with spaces
+  return id
+    .replace(/_/g, ' ')
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^\w/, c => c.toUpperCase())
+    .trim();
 };
 
 const getScoreColor = (score) => {
@@ -205,16 +259,19 @@ const getScoreColor = (score) => {
 };
 
 const countItemsInCommandPosition = (furniturePlacements) => {
+  if (!furniturePlacements) return 0;
   return furniturePlacements.filter(item => item.in_command_position).length;
 };
 
 const countItemsAgainstWall = (furniturePlacements) => {
+  if (!furniturePlacements) return 0;
   return furniturePlacements.filter(item => item.against_wall).length;
 };
 
 const getFurnitureName = (itemId, furniturePlacements) => {
+  if (!furniturePlacements) return itemId;
   const furniture = furniturePlacements.find(item => item.item_id === itemId);
-  return furniture ? furniture.name : itemId;
+  return furniture ? furniture.name || getFurnitureNameById(furniture.base_id) : itemId;
 };
 
 export default LayoutViewer;

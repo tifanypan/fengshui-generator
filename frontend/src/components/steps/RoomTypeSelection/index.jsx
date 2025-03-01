@@ -16,7 +16,6 @@ const RoomTypeSelection = ({ onNext }) => {
     <div className="max-w-3xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-6">Step 1: Room Type & Floor Plan</h2>
       
-      <RoomTypeSelector />
       <OccupantDetails />
       <FloorPlanUploader />
       

@@ -19,37 +19,53 @@ const ResultsPreview = ({ onNext, onBack }) => {
       try {
         // Only fetch if we have a valid ID
         if (!floorPlan.id) {
-          console.log('No floor plan ID available, skipping recommendations fetch');
+          console.log('No floor plan ID available, using mock recommendations');
+          setRecommendations(getMockRecommendations());
           return;
         }
         
         console.log('Fetching recommendations for floor plan ID:', floorPlan.id);
-        const response = await getFengShuiRecommendations(floorPlan.id);
-        setRecommendations(response.data.recommendations || []);
+        try {
+          const response = await getFengShuiRecommendations(floorPlan.id);
+          setRecommendations(response.data.recommendations || []);
+        } catch (err) {
+          console.error('Error fetching recommendations:', err);
+          setRecommendations(getMockRecommendations());
+        }
       } catch (err) {
-        console.error('Error fetching recommendations:', err);
-        // Set some default recommendations if the API call fails
-        setRecommendations([
-          {
-            "type": "general",
-            "category": "balance",
-            "title": "Create a balanced environment",
-            "description": "Balance the five elements (wood, fire, earth, metal, water) in your space for optimal feng shui energy.",
-            "importance": "high"
-          },
-          {
-            "type": "enhancement",
-            "category": "decluttering",
-            "title": "Clear clutter for better energy flow",
-            "description": "Regularly declutter to allow chi to flow freely throughout your space. Organize storage areas and keep pathways clear.",
-            "importance": "high"
-          }
-        ]);
+        console.error('General error in fetchRecommendations:', err);
+        setRecommendations(getMockRecommendations());
       }
     };
     
     fetchRecommendations();
   }, [floorPlan.id]);
+  
+  const getMockRecommendations = () => {
+    return [
+      {
+        "type": "general",
+        "category": "balance",
+        "title": "Create a balanced environment",
+        "description": "Balance the five elements (wood, fire, earth, metal, water) in your space for optimal feng shui energy.",
+        "importance": "high"
+      },
+      {
+        "type": "enhancement",
+        "category": "decluttering",
+        "title": "Clear clutter for better energy flow",
+        "description": "Regularly declutter to allow chi to flow freely throughout your space. Organize storage areas and keep pathways clear.",
+        "importance": "high"
+      },
+      {
+        "type": "placement",
+        "category": "furniture_placement",
+        "title": "Position furniture with intention",
+        "description": "Place major furniture pieces in command positions with solid support behind them. Avoid blocking doorways or windows.",
+        "importance": "medium"
+      }
+    ];
+  };
   
   const handleGeneratePreview = async () => {
     // We're not generating actual layouts here, just sample/preview data
@@ -61,104 +77,7 @@ const ResultsPreview = ({ onNext, onBack }) => {
       // In a real implementation, this would be a lightweight API call 
       // that returns simplified layout data for preview purposes
       setTimeout(() => {
-        const previewLayouts = {
-          optimal_layout: {
-            id: "preview_optimal",
-            strategy: "optimal",
-            furniture_placements: [
-              {
-                item_id: "bed_1",
-                base_id: "queen_bed",
-                name: "Queen Bed",
-                x: 120,
-                y: 80,
-                width: 60,
-                height: 80,
-                rotation: 0,
-                in_command_position: true,
-                against_wall: true,
-                feng_shui_quality: "excellent"
-              },
-              {
-                item_id: "dresser_1",
-                base_id: "dresser",
-                name: "Dresser",
-                x: 220,
-                y: 50,
-                width: 60,
-                height: 18,
-                rotation: 0,
-                in_command_position: false,
-                against_wall: true,
-                feng_shui_quality: "good"
-              }
-            ],
-            tradeoffs: [],
-            feng_shui_score: 85
-          },
-          space_conscious_layout: {
-            id: "preview_space",
-            strategy: "space_conscious",
-            furniture_placements: [
-              {
-                item_id: "bed_1",
-                base_id: "queen_bed",
-                name: "Queen Bed",
-                x: 100,
-                y: 60,
-                width: 60,
-                height: 80,
-                rotation: 0,
-                in_command_position: true,
-                against_wall: true,
-                feng_shui_quality: "good"
-              },
-              {
-                item_id: "dresser_1",
-                base_id: "dresser",
-                name: "Dresser",
-                x: 200,
-                y: 80,
-                width: 60,
-                height: 18,
-                rotation: 0,
-                in_command_position: false,
-                against_wall: true,
-                feng_shui_quality: "fair"
-              }
-            ],
-            tradeoffs: [
-              {
-                item_id: "dresser_1",
-                issue: "non_ideal_bagua_area",
-                description: "Dresser is not in its ideal bagua area",
-                severity: "low",
-                mitigation: "Consider adding wood elements nearby to enhance energy"
-              }
-            ],
-            feng_shui_score: 75
-          },
-          room_analysis: {
-            dimensions: {
-              width: floorPlan.dimensions.width,
-              length: floorPlan.dimensions.length,
-              area: floorPlan.dimensions.width * floorPlan.dimensions.length,
-              units: "meters"
-            },
-            bagua_map: {
-              "wealth": { x: 0, y: 0, width: 100, height: 100, element: "wood", life_area: "prosperity", colors: ["purple", "green"] },
-              "fame": { x: 100, y: 0, width: 100, height: 100, element: "fire", life_area: "reputation", colors: ["red"] },
-              "relationships": { x: 200, y: 0, width: 100, height: 100, element: "earth", life_area: "love", colors: ["pink", "red", "white"] },
-              "family": { x: 0, y: 100, width: 100, height: 100, element: "wood", life_area: "family", colors: ["green"] },
-              "center": { x: 100, y: 100, width: 100, height: 100, element: "earth", life_area: "health", colors: ["yellow", "brown"] },
-              "children": { x: 200, y: 100, width: 100, height: 100, element: "metal", life_area: "creativity", colors: ["white", "grey"] },
-              "knowledge": { x: 0, y: 200, width: 100, height: 100, element: "earth", life_area: "wisdom", colors: ["blue", "green"] },
-              "career": { x: 100, y: 200, width: 100, height: 100, element: "water", life_area: "career", colors: ["black", "blue"] },
-              "helpful_people": { x: 200, y: 200, width: 100, height: 100, element: "metal", life_area: "travel", colors: ["grey", "white"] }
-            }
-          }
-        };
-
+        const previewLayouts = generateMockPreviewLayouts();
         setSampleLayouts(previewLayouts);
         setIsLoading(false);
       }, 1000);
@@ -167,6 +86,160 @@ const ResultsPreview = ({ onNext, onBack }) => {
       setError('Failed to generate preview. Please try again.');
       setIsLoading(false);
     }
+  };
+  
+  const generateMockPreviewLayouts = () => {
+    // Get room dimensions from floorPlan state
+    const roomWidth = floorPlan.dimensions.width || 4.2;
+    const roomLength = floorPlan.dimensions.length || 3.6;
+    
+    // Create sample furniture placements based on selected items
+    const furniturePlacements = [];
+    let index = 0;
+    
+    // Add placed furniture items
+    Object.entries(furniture.items).forEach(([itemId, item]) => {
+      if (item.quantity > 0) {
+        for (let i = 0; i < Math.min(item.quantity, 1); i++) { // Limit to 1 of each for preview
+          furniturePlacements.push({
+            item_id: `${itemId}_${i}`,
+            base_id: itemId,
+            name: item.customName || formatItemName(itemId),
+            x: 100 + (index * 60) % 300,
+            y: 100 + Math.floor((index * 60) / 300) * 60,
+            width: item.dimensions?.width || 30,
+            height: item.dimensions?.height || 30,
+            rotation: 0,
+            in_command_position: index === 0,
+            against_wall: index % 2 === 0,
+            feng_shui_quality: "good"
+          });
+          index++;
+        }
+      }
+    });
+    
+    // If no furniture selected, add sample furniture
+    if (furniturePlacements.length === 0) {
+      if (floorPlan.roomType === 'bedroom' || !floorPlan.roomType) {
+        furniturePlacements.push(
+          {
+            item_id: "bed_1",
+            base_id: "queen_bed",
+            name: "Queen Bed",
+            x: 120,
+            y: 80,
+            width: 60,
+            height: 80,
+            rotation: 0,
+            in_command_position: true,
+            against_wall: true,
+            feng_shui_quality: "good"
+          },
+          {
+            item_id: "dresser_1",
+            base_id: "dresser",
+            name: "Dresser",
+            x: 220,
+            y: 50,
+            width: 60,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: true,
+            feng_shui_quality: "fair"
+          }
+        );
+      } else if (floorPlan.roomType === 'office') {
+        furniturePlacements.push(
+          {
+            item_id: "desk_1",
+            base_id: "desk",
+            name: "Desk",
+            x: 120,
+            y: 80,
+            width: 48,
+            height: 24,
+            rotation: 0,
+            in_command_position: true,
+            against_wall: true,
+            feng_shui_quality: "good"
+          },
+          {
+            item_id: "office_chair_1",
+            base_id: "office_chair",
+            name: "Office Chair",
+            x: 130,
+            y: 110,
+            width: 24,
+            height: 24,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: false,
+            feng_shui_quality: "good"
+          }
+        );
+      }
+    }
+    
+    return {
+      optimal_layout: {
+        id: "preview_optimal",
+        strategy: "optimal",
+        furniture_placements: furniturePlacements,
+        tradeoffs: [],
+        feng_shui_score: 85
+      },
+      space_conscious_layout: {
+        id: "preview_space",
+        strategy: "space_conscious",
+        furniture_placements: furniturePlacements.map(item => ({
+          ...item,
+          x: item.x * 0.9,
+          y: item.y * 0.9,
+          feng_shui_quality: "fair"
+        })),
+        tradeoffs: [
+          {
+            item_id: furniturePlacements[0]?.item_id || "sample_item",
+            issue: "non_ideal_bagua_area",
+            description: "Item is not in its ideal bagua area",
+            severity: "low",
+            mitigation: "Consider adding complementary elements nearby to enhance energy"
+          }
+        ],
+        feng_shui_score: 75
+      },
+      room_analysis: {
+        dimensions: {
+          width: roomWidth,
+          length: roomLength,
+          area: roomWidth * roomLength,
+          units: "meters"
+        },
+        bagua_map: {
+          "wealth": { x: 0, y: 0, width: roomWidth/3, height: roomLength/3, element: "wood", life_area: "prosperity", colors: ["purple", "green"] },
+          "fame": { x: roomWidth/3, y: 0, width: roomWidth/3, height: roomLength/3, element: "fire", life_area: "reputation", colors: ["red"] },
+          "relationships": { x: 2*roomWidth/3, y: 0, width: roomWidth/3, height: roomLength/3, element: "earth", life_area: "love", colors: ["pink", "red", "white"] },
+          "family": { x: 0, y: roomLength/3, width: roomWidth/3, height: roomLength/3, element: "wood", life_area: "family", colors: ["green"] },
+          "center": { x: roomWidth/3, y: roomLength/3, width: roomWidth/3, height: roomLength/3, element: "earth", life_area: "health", colors: ["yellow", "brown"] },
+          "children": { x: 2*roomWidth/3, y: roomLength/3, width: roomWidth/3, height: roomLength/3, element: "metal", life_area: "creativity", colors: ["white", "grey"] },
+          "knowledge": { x: 0, y: 2*roomLength/3, width: roomWidth/3, height: roomLength/3, element: "earth", life_area: "wisdom", colors: ["blue", "green"] },
+          "career": { x: roomWidth/3, y: 2*roomLength/3, width: roomWidth/3, height: roomLength/3, element: "water", life_area: "career", colors: ["black", "blue"] },
+          "helpful_people": { x: 2*roomWidth/3, y: 2*roomLength/3, width: roomWidth/3, height: roomLength/3, element: "metal", life_area: "travel", colors: ["grey", "white"] }
+        }
+      }
+    };
+  };
+  
+  // Format item ID to readable name
+  const formatItemName = (itemId) => {
+    return itemId
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
   
   const calculateTotalPrice = () => {
