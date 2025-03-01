@@ -1,33 +1,5 @@
-// import api from './index';
+// Updated layouts.js file with comprehensive error handling and data preparation
 
-// /**
-//  * Generate feng shui-optimized layouts for a floor plan
-//  * 
-//  * @param {number} floorPlanId - The ID of the floor plan
-//  * @param {object} furnitureSelections - Selected furniture items with quantities
-//  * @param {string} primaryLifeGoal - Optional life goal to prioritize (premium feature)
-//  * @returns {Promise} - API response with generated layouts
-//  */
-// export const generateLayouts = async (floorPlanId, furnitureSelections, primaryLifeGoal = null) => {
-//   const payload = { 
-//     ...furnitureSelections,
-//     primary_life_goal: primaryLifeGoal
-//   };
-  
-//   return api.post(`/api/layouts/${floorPlanId}`, payload);
-// };
-
-// /**
-//  * Get feng shui recommendations for a floor plan without generating full layouts
-//  * 
-//  * @param {number} floorPlanId - The ID of the floor plan
-//  * @returns {Promise} - API response with feng shui recommendations
-//  */
-// export const getFengShuiRecommendations = async (floorPlanId) => {
-//   return api.get(`/api/layouts/${floorPlanId}/recommendations`);
-// };
-
-// src/api/layouts.js - Updated with logging
 import api from './index';
 
 /**
@@ -39,27 +11,89 @@ import api from './index';
  * @returns {Promise} - API response with generated layouts
  */
 export const generateLayouts = async (floorPlanId, furnitureSelections, primaryLifeGoal = null) => {
-  const payload = { 
-    ...furnitureSelections,
+  // Prepare payload with all required fields
+  const payload = {
+    // First ensure all furniture items have the complete structure the backend expects
+    items: Object.entries(furnitureSelections.items || {})
+      .filter(([_, item]) => item.quantity > 0)
+      .reduce((acc, [id, item]) => {
+        acc[id] = {
+          quantity: item.quantity,
+          dimensions: {
+            width: item.dimensions?.width || 0,
+            height: item.dimensions?.height || 0
+          },
+          customName: item.customName || null,
+          type: item.type || 'furniture',
+          fengShuiRole: item.fengShuiRole || 'balance'
+        };
+        return acc;
+      }, {}),
+    
+    // Ensure specialConsiderations has all expected fields
+    specialConsiderations: {
+      wheelchair: !!furnitureSelections.specialConsiderations?.wheelchair,
+      smallSpace: !!furnitureSelections.specialConsiderations?.smallSpace,
+      rental: !!furnitureSelections.specialConsiderations?.rental,
+      pets: !!furnitureSelections.specialConsiderations?.pets,
+      sensory: !!furnitureSelections.specialConsiderations?.sensory
+    },
+    
+    // Include outdoor space flag
+    hasOutdoorSpace: !!furnitureSelections.hasOutdoorSpace,
+    
+    // Include studio configuration if applicable
+    studioConfig: {
+      hasKitchen: !!furnitureSelections.studioConfig?.hasKitchen,
+      hasDining: !!furnitureSelections.studioConfig?.hasDining,
+      hasWorkspace: !!furnitureSelections.studioConfig?.hasWorkspace,
+      hasSleeping: furnitureSelections.studioConfig?.hasSleeping !== false
+    },
+    
+    // Add life goal parameter
     primary_life_goal: primaryLifeGoal
   };
   
-  // Log the payload to see what's being sent
+  // Log the payload for debugging
   console.log('Layout payload being sent to API:', JSON.stringify(payload, null, 2));
   
-try {
-  const response = await api.post(`/api/layouts/${floorPlanId}`, payload);
-  return response;
-} catch (error) {
-  console.error('API Error Response Details:', {
-    status: error.response?.status,
-    statusText: error.response?.statusText,
-    data: error.response?.data,
-    message: error.message
-  });
-  
+  try {
+    // For development testing with the test API
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        // Try the test API first for easier debugging
+        console.log(`Trying test API endpoint for floor plan ID: ${floorPlanId}`);
+        const testResponse = await api.post(`/api/test/layouts/${floorPlanId}`, payload, {
+          headers: {
+            'X-API-Key': 'dev_test_key_2025' // Test API key from code
+          }
+        });
+        console.log('Test API successful:', testResponse.data);
+        return testResponse;
+      } catch (testError) {
+        console.log('Test API failed, falling back to regular API:', testError.message);
+        // Continue to regular API if test fails
+      }
+    }
     
-    // Mock data fallback for development
+    // Regular API request
+    const response = await api.post(`/api/layouts/${floorPlanId}`, payload);
+    return response;
+  } catch (error) {
+    // Enhanced error logging
+    console.error('API Error Response Details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    
+    // Log validation details if available
+    if (error.response?.data?.detail) {
+      console.error('Validation Error Details:', JSON.stringify(error.response.data.detail, null, 2));
+    }
+    
+    // For development, use mock data fallback
     if (process.env.NODE_ENV === 'development') {
       console.log('Using mock layout data as fallback');
       return {
@@ -72,8 +106,51 @@ try {
   }
 };
 
-// Mock data function for fallback
-const mockLayoutData = (floorPlanId, furnitureSelections, primaryLifeGoal) => {
+// Rest of the file unchanged
+export const getFengShuiRecommendations = async (floorPlanId) => {
+  try {
+    const response = await api.get(`/api/layouts/${floorPlanId}/recommendations`);
+    return response;
+  } catch (error) {
+    console.error('API Error Response:', error.response?.data);
+    
+    // Mock data fallback for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using mock recommendations as fallback');
+      return {
+        data: {
+          recommendations: [
+            {
+              "type": "general",
+              "category": "balance",
+              "title": "Create a balanced environment",
+              "description": "Balance the five elements (wood, fire, earth, metal, water) in your space for optimal feng shui energy.",
+              "importance": "high"
+            },
+            {
+              "type": "enhancement",
+              "category": "decluttering",
+              "title": "Clear clutter for better energy flow",
+              "description": "Regularly declutter to allow chi to flow freely throughout your space. Organize storage areas and keep pathways clear.",
+              "importance": "high"
+            },
+            {
+              "type": "placement",
+              "category": "furniture_placement",
+              "title": "Position furniture with intention",
+              "description": "Place major furniture pieces in command positions with solid support behind them. Avoid blocking doorways or windows.",
+              "importance": "medium"
+            }
+          ]
+        }
+      };
+    }
+    throw error;
+  }
+};
+
+// Mock data generator function (unchanged)
+const mockLayoutData = (floorPlanId, furnitureSelections, primaryLifeGoal = null) => {
   // Create basic layout with furniture items from the selections
   const furniturePlacements = [];
   let index = 0;
@@ -176,47 +253,4 @@ const mockLayoutData = (floorPlanId, furnitureSelections, primaryLifeGoal) => {
       }
     ]
   };
-};
-
-// Rest of the file unchanged
-export const getFengShuiRecommendations = async (floorPlanId) => {
-  try {
-    const response = await api.get(`/api/layouts/${floorPlanId}/recommendations`);
-    return response;
-  } catch (error) {
-    console.error('API Error Response:', error.response?.data);
-    
-    // Mock data fallback for development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Using mock recommendations as fallback');
-      return {
-        data: {
-          recommendations: [
-            {
-              "type": "general",
-              "category": "balance",
-              "title": "Create a balanced environment",
-              "description": "Balance the five elements (wood, fire, earth, metal, water) in your space for optimal feng shui energy.",
-              "importance": "high"
-            },
-            {
-              "type": "enhancement",
-              "category": "decluttering",
-              "title": "Clear clutter for better energy flow",
-              "description": "Regularly declutter to allow chi to flow freely throughout your space. Organize storage areas and keep pathways clear.",
-              "importance": "high"
-            },
-            {
-              "type": "placement",
-              "category": "furniture_placement",
-              "title": "Position furniture with intention",
-              "description": "Place major furniture pieces in command positions with solid support behind them. Avoid blocking doorways or windows.",
-              "importance": "medium"
-            }
-          ]
-        }
-      };
-    }
-    throw error;
-  }
 };
