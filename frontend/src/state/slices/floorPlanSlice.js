@@ -1,5 +1,6 @@
 export const floorPlanSlice = (set, get) => ({
   floorPlan: {
+    id: null, // Add this property to store the floor plan ID
     file: null,
     fileUrl: null,
     fileType: null,
@@ -32,48 +33,56 @@ export const floorPlanSlice = (set, get) => ({
       fileType: file ? file.type : null,
     },
   })),
+  
+  // Add this setter function
+  setFloorPlanId: (id) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      id,
+    },
+  })),
     
-    setRoomType: (roomType) => set((state) => ({
-      floorPlan: {
-        ...state.floorPlan,
-        roomType,
-      },
-    })),
+  setRoomType: (roomType) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      roomType,
+    },
+  })),
     
-    addOccupant: (occupant) => set((state) => ({
-      floorPlan: {
-        ...state.floorPlan,
-        occupants: [...state.floorPlan.occupants, occupant],
-      },
-    })),
+  addOccupant: (occupant) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      occupants: [...state.floorPlan.occupants, occupant],
+    },
+  })),
     
-    removeOccupant: (index) => set((state) => ({
-      floorPlan: {
-        ...state.floorPlan,
-        occupants: state.floorPlan.occupants.filter((_, i) => i !== index),
-      },
-    })),
+  removeOccupant: (index) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      occupants: state.floorPlan.occupants.filter((_, i) => i !== index),
+    },
+  })),
     
-    setDimensions: (dimensions) => set((state) => ({
-      floorPlan: {
-        ...state.floorPlan,
-        dimensions,
-      },
-    })),
+  setDimensions: (dimensions) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      dimensions,
+    },
+  })),
     
-    setLoading: (isLoading) => set((state) => ({
-      floorPlan: {
-        ...state.floorPlan,
-        isLoading,
-      },
-    })),
+  setLoading: (isLoading) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      isLoading,
+    },
+  })),
     
-    setError: (error) => set((state) => ({
-      floorPlan: {
-        ...state.floorPlan,
-        error,
-      },
-    })),
+  setError: (error) => set((state) => ({
+    floorPlan: {
+      ...state.floorPlan,
+      error,
+    },
+  })),
 
      
   setCellSize: (cellSize) => set((state) => ({
@@ -111,12 +120,6 @@ export const floorPlanSlice = (set, get) => ({
         ...state.floorPlan.compass,
         orientation,
       },
-    },
-  })),
-  setDimensions: (dimensions) => set((state) => ({
-    floorPlan: {
-      ...state.floorPlan,
-      dimensions,
     },
   })),
 });

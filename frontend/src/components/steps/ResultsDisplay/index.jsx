@@ -1,0 +1,458 @@
+// src/components/steps/ResultsDisplay/index.jsx
+import React, { useState, useEffect } from 'react';
+import useStore from '../../../state/store';
+import Button from '../../shared/Button';
+import LayoutViewer from '../../results/LayoutViewer';
+import FengShuiRecommendations from '../../results/FengShuiRecommendations';
+import { generateLayouts } from '../../../api/layouts';
+
+const ResultsDisplay = ({ onBack }) => {
+  const { floorPlan, furniture, payment } = useStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [layouts, setLayouts] = useState(null);
+  const [activeLayout, setActiveLayout] = useState('optimal_layout');
+  const [error, setError] = useState(null);
+  
+  // Generate layouts when component mounts
+  useEffect(() => {
+    const fetchLayouts = async () => {
+      try {
+        // Check if we have a valid floor plan ID
+        if (!floorPlan.id) {
+          console.log("No floor plan ID available, using mock data");
+          // For testing - use mock data when no floor plan ID is available
+          setTimeout(() => {
+            setLayouts(generateMockLayouts());
+            setIsLoading(false);
+          }, 1500);
+          return;
+        }
+        
+        console.log("Generating layouts for floor plan ID:", floorPlan.id);
+        const lifeGoal = payment.lifeGoalOptimization ? payment.lifeGoal : null;
+        
+        const payload = {
+          items: Object.fromEntries(
+            Object.entries(furniture.items).filter(([_, item]) => item.quantity > 0)
+          ),
+          specialConsiderations: furniture.specialConsiderations,
+          hasOutdoorSpace: furniture.hasOutdoorSpace,
+          studioConfig: furniture.studioConfig,
+        };
+        
+        const response = await generateLayouts(
+          floorPlan.id,
+          payload,
+          lifeGoal
+        );
+        
+        setLayouts(response.data.layouts);
+      } catch (err) {
+        console.error('Error generating layouts:', err);
+        setError('Failed to generate layouts. Using sample data instead.');
+        
+        // Fallback to mock data if API call fails
+        setLayouts(generateMockLayouts());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLayouts();
+  }, []);
+  
+  // Generate mock layouts for testing when API is not available
+  const generateMockLayouts = () => {
+    const mockData = {
+      optimal_layout: {
+        id: "mock_optimal",
+        strategy: "optimal",
+        furniture_placements: [
+          {
+            item_id: "bed_1",
+            base_id: "queen_bed",
+            name: "Queen Bed",
+            x: 120,
+            y: 80,
+            width: 60,
+            height: 80,
+            rotation: 0,
+            in_command_position: true,
+            against_wall: true,
+            feng_shui_quality: "excellent"
+          },
+          {
+            item_id: "dresser_1",
+            base_id: "dresser",
+            name: "Dresser",
+            x: 220,
+            y: 50,
+            width: 60,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: true,
+            feng_shui_quality: "good"
+          },
+          {
+            item_id: "nightstand_1",
+            base_id: "nightstand",
+            name: "Nightstand",
+            x: 190,
+            y: 80,
+            width: 18,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: false,
+            feng_shui_quality: "good"
+          },
+          {
+            item_id: "nightstand_2",
+            base_id: "nightstand",
+            name: "Nightstand",
+            x: 90,
+            y: 80,
+            width: 18,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: false,
+            feng_shui_quality: "good"
+          }
+        ],
+        tradeoffs: [],
+        feng_shui_score: 92
+      },
+      space_conscious_layout: {
+        id: "mock_space",
+        strategy: "space_conscious",
+        furniture_placements: [
+          {
+            item_id: "bed_1",
+            base_id: "queen_bed",
+            name: "Queen Bed",
+            x: 100,
+            y: 60,
+            width: 60,
+            height: 80,
+            rotation: 0,
+            in_command_position: true,
+            against_wall: true,
+            feng_shui_quality: "good"
+          },
+          {
+            item_id: "dresser_1",
+            base_id: "dresser",
+            name: "Dresser",
+            x: 200,
+            y: 80,
+            width: 60,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: true,
+            feng_shui_quality: "fair"
+          },
+          {
+            item_id: "nightstand_1",
+            base_id: "nightstand",
+            name: "Nightstand",
+            x: 170,
+            y: 60,
+            width: 18,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: false,
+            feng_shui_quality: "fair"
+          }
+        ],
+        tradeoffs: [
+          {
+            item_id: "dresser_1",
+            issue: "non_ideal_bagua_area",
+            description: "Dresser is not in its ideal bagua area",
+            severity: "low",
+            mitigation: "Consider adding wood elements nearby to enhance energy"
+          }
+        ],
+        feng_shui_score: 78
+      },
+      life_goal_layout: payment.lifeGoalOptimization ? {
+        id: "mock_life_goal",
+        strategy: "life_goal",
+        furniture_placements: [
+          {
+            item_id: "bed_1",
+            base_id: "queen_bed",
+            name: "Queen Bed",
+            x: 140,
+            y: 100,
+            width: 60,
+            height: 80,
+            rotation: 0,
+            in_command_position: true,
+            against_wall: true,
+            feng_shui_quality: "excellent"
+          },
+          {
+            item_id: "dresser_1",
+            base_id: "dresser",
+            name: "Dresser",
+            x: 240,
+            y: 70,
+            width: 60,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: true,
+            feng_shui_quality: "excellent"
+          },
+          {
+            item_id: "nightstand_1",
+            base_id: "nightstand",
+            name: "Nightstand",
+            x: 210,
+            y: 100,
+            width: 18,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: false,
+            feng_shui_quality: "good"
+          },
+          {
+            item_id: "nightstand_2",
+            base_id: "nightstand",
+            name: "Nightstand",
+            x: 110,
+            y: 100,
+            width: 18,
+            height: 18,
+            rotation: 0,
+            in_command_position: false,
+            against_wall: false,
+            feng_shui_quality: "good"
+          }
+        ],
+        tradeoffs: [],
+        feng_shui_score: 90,
+        life_goal: payment.lifeGoal
+      } : null,
+      room_analysis: {
+        dimensions: {
+          width: floorPlan.dimensions.width || 4.2,
+          length: floorPlan.dimensions.length || 3.6,
+          area: (floorPlan.dimensions.width || 4.2) * (floorPlan.dimensions.length || 3.6),
+          units: "meters"
+        },
+        bagua_map: {
+          "wealth": { x: 0, y: 0, width: 100, height: 100, element: "wood", life_area: "prosperity", colors: ["purple", "green"] },
+          "fame": { x: 100, y: 0, width: 100, height: 100, element: "fire", life_area: "reputation", colors: ["red"] },
+          "relationships": { x: 200, y: 0, width: 100, height: 100, element: "earth", life_area: "love", colors: ["pink", "red", "white"] },
+          "family": { x: 0, y: 100, width: 100, height: 100, element: "wood", life_area: "family", colors: ["green"] },
+          "center": { x: 100, y: 100, width: 100, height: 100, element: "earth", life_area: "health", colors: ["yellow", "brown"] },
+          "children": { x: 200, y: 100, width: 100, height: 100, element: "metal", life_area: "creativity", colors: ["white", "grey"] },
+          "knowledge": { x: 0, y: 200, width: 100, height: 100, element: "earth", life_area: "wisdom", colors: ["blue", "green"] },
+          "career": { x: 100, y: 200, width: 100, height: 100, element: "water", life_area: "career", colors: ["black", "blue"] },
+          "helpful_people": { x: 200, y: 200, width: 100, height: 100, element: "metal", life_area: "travel", colors: ["grey", "white"] }
+        }
+      },
+      recommendations: [
+        {
+          "type": "general",
+          "category": "sleep",
+          "title": "Optimal sleep environment",
+          "description": "For better sleep quality, consider using soft, calming colors like blue, green, or lavender. Avoid electronics near the bed and use blackout curtains.",
+          "importance": "high"
+        },
+        {
+          "type": "placement",
+          "category": "bed_placement",
+          "title": "Ideal bed placement",
+          "description": "Place your bed in the command position (diagonally across from the door, but not directly in line with it) with a solid wall behind it for stability and support.",
+          "importance": "high"
+        },
+        {
+          "type": "enhancement",
+          "category": "decluttering",
+          "title": "Maintain clear energy with decluttering",
+          "description": "Regularly clear clutter to maintain positive energy flow. Keep pathways open and organize storage to prevent energy stagnation.",
+          "importance": "high"
+        },
+        {
+          "type": "enhancement",
+          "category": "lighting",
+          "title": "Optimize lighting for energy balance",
+          "description": "Use layered lighting with a mix of overhead, task, and accent lights. Natural light is best during the day, with warm lighting in the evening for better rest.",
+          "importance": "medium"
+        }
+      ]
+    };
+    
+    return mockData;
+  };
+  
+  const handleDownloadPDF = () => {
+    // For now, just show an alert - in a real implementation, this would generate a PDF
+    alert('PDF Generation: In a production environment, this would generate and download a PDF with your feng shui layout plans.');
+  };
+  
+  // Display loading state
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-4">
+        <h2 className="text-2xl font-bold mb-6">Step 6: Your Feng Shui Results</h2>
+        <div className="bg-white border border-gray-300 rounded-md p-6 text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+          <p>Generating your personalized feng shui layouts...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Display error
+  if (error && !layouts) {
+    return (
+      <div className="max-w-6xl mx-auto p-4">
+        <h2 className="text-2xl font-bold mb-6">Step 6: Your Feng Shui Results</h2>
+        <div className="bg-white border border-gray-300 rounded-md p-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded mb-4">
+            {error}
+          </div>
+          <Button onClick={onBack}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="max-w-6xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Step 6: Your Feng Shui Results</h2>
+        <div>
+          <Button onClick={handleDownloadPDF}>
+            Download PDF
+          </Button>
+        </div>
+      </div>
+      
+      <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
+        <h3 className="text-lg font-medium text-green-800 mb-2">Payment Successful</h3>
+        <p className="text-green-700">
+          Thank you for your purchase! Your feng shui layouts have been generated successfully.
+        </p>
+        {error && (
+          <p className="text-yellow-600 mt-2 text-sm">
+            Note: {error}
+          </p>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+        {/* Left Column - Layout Display */}
+        <div className="md:col-span-8">
+          {/* Layout Selection Tabs */}
+          <div className="flex mb-4 border-b">
+            <button
+              className={`py-2 px-4 ${activeLayout === 'optimal_layout' ? 'border-b-2 border-blue-500 font-medium' : 'text-gray-500'}`}
+              onClick={() => setActiveLayout('optimal_layout')}
+            >
+              Best Feng Shui
+            </button>
+            <button
+              className={`py-2 px-4 ${activeLayout === 'space_conscious_layout' ? 'border-b-2 border-blue-500 font-medium' : 'text-gray-500'}`}
+              onClick={() => setActiveLayout('space_conscious_layout')}
+            >
+              Space Efficient
+            </button>
+            {layouts?.life_goal_layout && payment.lifeGoalOptimization && (
+              <button
+                className={`py-2 px-4 ${activeLayout === 'life_goal_layout' ? 'border-b-2 border-blue-500 font-medium' : 'text-gray-500'}`}
+                onClick={() => setActiveLayout('life_goal_layout')}
+              >
+                {payment.lifeGoal ? `${payment.lifeGoal.charAt(0).toUpperCase() + payment.lifeGoal.slice(1)} Focus` : 'Life Goal Focus'}
+              </button>
+            )}
+          </div>
+          
+          {/* Layout Viewer */}
+          {layouts && (
+            <LayoutViewer 
+              layouts={layouts}
+              activeLayout={activeLayout}
+              onChangeLayout={setActiveLayout}
+            />
+          )}
+        </div>
+        
+        {/* Right Column - Purchase Info & Recommendations */}
+        <div className="md:col-span-4">
+          <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
+            <h3 className="text-lg font-medium mb-2">Your Purchase</h3>
+            <ul className="space-y-2 mb-4">
+              <li className="flex justify-between">
+                <span>Basic Layout</span>
+                <span className="font-medium">✓</span>
+              </li>
+              {payment.lifeGoalOptimization && (
+                <li className="flex justify-between">
+                  <span>Life Goal Optimization</span>
+                  <span className="font-medium text-blue-600">✓ Premium</span>
+                </li>
+              )}
+              {payment.editProtection && (
+                <li className="flex justify-between">
+                  <span>Edit Protection</span>
+                  <span className="font-medium text-blue-600">✓ Premium</span>
+                </li>
+              )}
+            </ul>
+            
+            {payment.editProtection && (
+              <div className="bg-blue-50 p-3 rounded text-sm text-blue-700">
+                <p><strong>Edit Protection:</strong> You can request one-time adjustments to your layout within 48 hours.</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Room Info */}
+          <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
+            <h3 className="text-lg font-medium mb-2">Room Information</h3>
+            <ul className="space-y-1 text-sm mb-4">
+              <li><span className="font-medium">Type:</span> {floorPlan.roomType?.replace(/_/g, ' ') || 'Bedroom'}</li>
+              <li><span className="font-medium">Dimensions:</span> {(floorPlan.dimensions.width || 4.2).toFixed(1)}m × {(floorPlan.dimensions.length || 3.6).toFixed(1)}m</li>
+              <li><span className="font-medium">Orientation:</span> {floorPlan.compass.orientation || 'North'}</li>
+              <li>
+                <span className="font-medium">Furniture:</span> {' '}
+                {Object.values(furniture.items).reduce((total, item) => total + (item.quantity || 0), 0)} items
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      {/* Feng Shui Recommendations */}
+      {layouts && (
+        <FengShuiRecommendations recommendations={layouts.recommendations || []} />
+      )}
+      
+      <div className="mt-8 flex justify-between">
+        <Button 
+          variant="secondary"
+          onClick={onBack}
+        >
+          Back to Payment
+        </Button>
+        
+        <Button onClick={handleDownloadPDF}>
+          Download PDF
+        </Button>
+      </div>
+    </div>
+  );
+
+};
+
+export default ResultsDisplay;

@@ -3,141 +3,177 @@ import useStore from '../../../state/store';
 import Button from '../../shared/Button';
 import LayoutViewer from '../../results/LayoutViewer';
 import FengShuiRecommendations from '../../results/FengShuiRecommendations';
-import { generateLayouts, getFengShuiRecommendations } from '../../../api/layouts';
+import { getFengShuiRecommendations } from '../../../api/layouts';
 
 const ResultsPreview = ({ onNext, onBack }) => {
-  const { floorPlan, furniture } = useStore();
+  const { floorPlan, furniture, payment, setPaymentOption, setLifeGoal } = useStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [layouts, setLayouts] = useState(null);
+  const [sampleLayouts, setSampleLayouts] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [activeLayout, setActiveLayout] = useState('optimal_layout');
   const [error, setError] = useState(null);
-  const [paymentOption, setPaymentOption] = useState({
-    baseLayout: true,
-    lifeGoalOptimization: false,
-    editProtection: false
-  });
-  const [selectedLifeGoal, setSelectedLifeGoal] = useState(null);
   
   // Fetch recommendations on component mount
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
+        // Only fetch if we have a valid ID
+        if (!floorPlan.id) {
+          console.log('No floor plan ID available, skipping recommendations fetch');
+          return;
+        }
+        
+        console.log('Fetching recommendations for floor plan ID:', floorPlan.id);
         const response = await getFengShuiRecommendations(floorPlan.id);
         setRecommendations(response.data.recommendations || []);
       } catch (err) {
         console.error('Error fetching recommendations:', err);
+        // Set some default recommendations if the API call fails
+        setRecommendations([
+          {
+            "type": "general",
+            "category": "balance",
+            "title": "Create a balanced environment",
+            "description": "Balance the five elements (wood, fire, earth, metal, water) in your space for optimal feng shui energy.",
+            "importance": "high"
+          },
+          {
+            "type": "enhancement",
+            "category": "decluttering",
+            "title": "Clear clutter for better energy flow",
+            "description": "Regularly declutter to allow chi to flow freely throughout your space. Organize storage areas and keep pathways clear.",
+            "importance": "high"
+          }
+        ]);
       }
     };
     
-    if (floorPlan.id) {
-      fetchRecommendations();
-    }
+    fetchRecommendations();
   }, [floorPlan.id]);
   
-  const handleGenerateLayouts = async () => {
+  const handleGeneratePreview = async () => {
+    // We're not generating actual layouts here, just sample/preview data
     setIsLoading(true);
     setError(null);
     
+    // Mock data for preview only
     try {
-      // If no ID (test view), show an informative error
-      if (!floorPlan.id) {
-        setError('Layouts can be generated after completing payment.');
+      // In a real implementation, this would be a lightweight API call 
+      // that returns simplified layout data for preview purposes
+      setTimeout(() => {
+        const previewLayouts = {
+          optimal_layout: {
+            id: "preview_optimal",
+            strategy: "optimal",
+            furniture_placements: [
+              {
+                item_id: "bed_1",
+                base_id: "queen_bed",
+                name: "Queen Bed",
+                x: 120,
+                y: 80,
+                width: 60,
+                height: 80,
+                rotation: 0,
+                in_command_position: true,
+                against_wall: true,
+                feng_shui_quality: "excellent"
+              },
+              {
+                item_id: "dresser_1",
+                base_id: "dresser",
+                name: "Dresser",
+                x: 220,
+                y: 50,
+                width: 60,
+                height: 18,
+                rotation: 0,
+                in_command_position: false,
+                against_wall: true,
+                feng_shui_quality: "good"
+              }
+            ],
+            tradeoffs: [],
+            feng_shui_score: 85
+          },
+          space_conscious_layout: {
+            id: "preview_space",
+            strategy: "space_conscious",
+            furniture_placements: [
+              {
+                item_id: "bed_1",
+                base_id: "queen_bed",
+                name: "Queen Bed",
+                x: 100,
+                y: 60,
+                width: 60,
+                height: 80,
+                rotation: 0,
+                in_command_position: true,
+                against_wall: true,
+                feng_shui_quality: "good"
+              },
+              {
+                item_id: "dresser_1",
+                base_id: "dresser",
+                name: "Dresser",
+                x: 200,
+                y: 80,
+                width: 60,
+                height: 18,
+                rotation: 0,
+                in_command_position: false,
+                against_wall: true,
+                feng_shui_quality: "fair"
+              }
+            ],
+            tradeoffs: [
+              {
+                item_id: "dresser_1",
+                issue: "non_ideal_bagua_area",
+                description: "Dresser is not in its ideal bagua area",
+                severity: "low",
+                mitigation: "Consider adding wood elements nearby to enhance energy"
+              }
+            ],
+            feng_shui_score: 75
+          },
+          room_analysis: {
+            dimensions: {
+              width: floorPlan.dimensions.width,
+              length: floorPlan.dimensions.length,
+              area: floorPlan.dimensions.width * floorPlan.dimensions.length,
+              units: "meters"
+            },
+            bagua_map: {
+              "wealth": { x: 0, y: 0, width: 100, height: 100, element: "wood", life_area: "prosperity", colors: ["purple", "green"] },
+              "fame": { x: 100, y: 0, width: 100, height: 100, element: "fire", life_area: "reputation", colors: ["red"] },
+              "relationships": { x: 200, y: 0, width: 100, height: 100, element: "earth", life_area: "love", colors: ["pink", "red", "white"] },
+              "family": { x: 0, y: 100, width: 100, height: 100, element: "wood", life_area: "family", colors: ["green"] },
+              "center": { x: 100, y: 100, width: 100, height: 100, element: "earth", life_area: "health", colors: ["yellow", "brown"] },
+              "children": { x: 200, y: 100, width: 100, height: 100, element: "metal", life_area: "creativity", colors: ["white", "grey"] },
+              "knowledge": { x: 0, y: 200, width: 100, height: 100, element: "earth", life_area: "wisdom", colors: ["blue", "green"] },
+              "career": { x: 100, y: 200, width: 100, height: 100, element: "water", life_area: "career", colors: ["black", "blue"] },
+              "helpful_people": { x: 200, y: 200, width: 100, height: 100, element: "metal", life_area: "travel", colors: ["grey", "white"] }
+            }
+          }
+        };
+
+        setSampleLayouts(previewLayouts);
         setIsLoading(false);
-        return;
-      }
-      
-      const lifeGoal = paymentOption.lifeGoalOptimization ? selectedLifeGoal : null;
-      
-      const payload = {
-        items: Object.fromEntries(
-          Object.entries(furniture.items).filter(([_, item]) => item.quantity > 0)
-        ),
-        specialConsiderations: furniture.specialConsiderations,
-        hasOutdoorSpace: furniture.hasOutdoorSpace,
-        studioConfig: furniture.studioConfig,
-        primary_life_goal: lifeGoal
-      };
-  
-      const response = await generateLayouts(
-        floorPlan.id,
-        payload
-      );
-      
-      setLayouts(response.data.layouts);
-      
-      // Update recommendations if available
-      if (response.data.layouts.recommendations) {
-        setRecommendations(response.data.layouts.recommendations);
-      }
-      
+      }, 1000);
     } catch (err) {
-      console.error('Full error object:', err);
-      setError(
-        err.response?.data?.detail 
-          ? JSON.stringify(err.response.data.detail) 
-          : 'Failed to generate layouts. Please complete payment to generate full layouts.'
-      );
-    } finally {
+      console.error('Error generating preview:', err);
+      setError('Failed to generate preview. Please try again.');
       setIsLoading(false);
     }
   };
-//   const handleGenerateLayouts = async () => {
-//     setIsLoading(true);
-//     setError(null);
-    
-//     try {
-//       console.log('Floor Plan:', floorPlan);  // Log the entire floorPlan object
-//       console.log('Floor Plan ID:', floorPlan.id);  // Specifically check the ID
-  
-//       if (!floorPlan.id) {
-//         throw new Error('Floor Plan ID is undefined');
-//       }
-  
-//       const lifeGoal = paymentOption.lifeGoalOptimization ? selectedLifeGoal : null;
-      
-//       const payload = {
-//         items: Object.fromEntries(
-//           Object.entries(furniture.items).filter(([_, item]) => item.quantity > 0)
-//         ),
-//         specialConsiderations: furniture.specialConsiderations,
-//         hasOutdoorSpace: furniture.hasOutdoorSpace,
-//         studioConfig: furniture.studioConfig,
-//         primary_life_goal: lifeGoal
-//       };
-  
-//       console.log('Filtered Payload:', JSON.stringify(payload, null, 2));
-      
-//       const response = await generateLayouts(
-//         floorPlan.id,  // Make sure this is a valid ID
-//         payload
-//       );
-      
-//       setLayouts(response.data.layouts);
-      
-//       // Update recommendations if available
-//       if (response.data.layouts.recommendations) {
-//         setRecommendations(response.data.layouts.recommendations);
-//       }
-      
-//     } catch (err) {
-//       console.error('Full error object:', err);
-//       console.error('Error response:', err.response?.data);
-//       setError(
-//         err.response?.data?.detail 
-//           ? JSON.stringify(err.response.data.detail) 
-//           : 'Failed to generate layouts. Please try again.'
-//       );
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
   
   const calculateTotalPrice = () => {
     let total = 0;
-    if (paymentOption.baseLayout) total += 12;
-    if (paymentOption.lifeGoalOptimization) total += 5;
-    if (paymentOption.editProtection) total += 3;
+    if (payment.baseLayout) total += 12;
+    if (payment.lifeGoalOptimization) total += 5;
+    if (payment.editProtection) total += 3;
     return total;
   };
   
@@ -148,7 +184,7 @@ const ResultsPreview = ({ onNext, onBack }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column - Layout Preview */}
         <div className="md:col-span-2">
-          {layouts ? (
+          {sampleLayouts ? (
             <>
               {/* Layout Selection Tabs */}
               <div className="flex mb-4 border-b">
@@ -164,37 +200,39 @@ const ResultsPreview = ({ onNext, onBack }) => {
                 >
                   Space Efficient
                 </button>
-                {layouts.life_goal_layout && (
-                  <button
-                    className={`py-2 px-4 ${activeLayout === 'life_goal_layout' ? 'border-b-2 border-blue-500 font-medium' : 'text-gray-500'}`}
-                    onClick={() => setActiveLayout('life_goal_layout')}
-                  >
-                    {selectedLifeGoal ? `${selectedLifeGoal.charAt(0).toUpperCase() + selectedLifeGoal.slice(1)} Focus` : 'Life Goal Focus'}
-                  </button>
-                )}
               </div>
               
               {/* Layout Viewer */}
               <LayoutViewer 
-                layouts={layouts}
+                layouts={sampleLayouts}
                 activeLayout={activeLayout}
                 onChangeLayout={setActiveLayout}
               />
+              
+              {/* Preview Note */}
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-4 mb-4">
+                <h3 className="text-md font-medium text-blue-800 mb-2">Preview Note</h3>
+                <p className="text-sm text-blue-700">
+                  This is a simplified preview to give you an idea of the layout. 
+                  The final results will include more detailed furniture arrangements, 
+                  recommendations, and feng shui analysis.
+                </p>
+              </div>
             </>
           ) : (
             <div className="bg-white border border-gray-300 rounded-md p-6 mb-4 text-center">
               <h3 className="text-lg font-medium mb-4">Preview Your Feng Shui Layout</h3>
               <p className="mb-6 text-gray-600">
-                See your personalized feng shui furniture arrangement before purchasing the full PDF layout guide.
+                See a simplified preview of your feng shui furniture arrangement before purchase.
               </p>
               
               {isLoading ? (
                 <div className="text-center p-6">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
-                  <p>Generating your personalized feng shui layouts...</p>
+                  <p>Generating preview...</p>
                 </div>
               ) : (
-                <Button onClick={handleGenerateLayouts}>
+                <Button onClick={handleGeneratePreview}>
                   Generate Preview
                 </Button>
               )}
@@ -219,8 +257,8 @@ const ResultsPreview = ({ onNext, onBack }) => {
               <label className="flex items-start">
                 <input
                   type="checkbox"
-                  checked={paymentOption.baseLayout}
-                  onChange={() => setPaymentOption(prev => ({ ...prev, baseLayout: !prev.baseLayout }))}
+                  checked={payment.baseLayout}
+                  onChange={() => setPaymentOption('baseLayout', !payment.baseLayout)}
                   className="mt-1 mr-3"
                   disabled
                 />
@@ -239,13 +277,8 @@ const ResultsPreview = ({ onNext, onBack }) => {
               <label className="flex items-start">
                 <input
                   type="checkbox"
-                  checked={paymentOption.lifeGoalOptimization}
-                  onChange={() => setPaymentOption(prev => ({ 
-                    ...prev, 
-                    lifeGoalOptimization: !prev.lifeGoalOptimization,
-                    // Reset selected life goal if turning off
-                    selectedLifeGoal: !prev.lifeGoalOptimization ? selectedLifeGoal : null
-                  }))}
+                  checked={payment.lifeGoalOptimization}
+                  onChange={() => setPaymentOption('lifeGoalOptimization', !payment.lifeGoalOptimization)}
                   className="mt-1 mr-3"
                 />
                 <div>
@@ -257,12 +290,12 @@ const ResultsPreview = ({ onNext, onBack }) => {
                 </div>
               </label>
               
-              {paymentOption.lifeGoalOptimization && (
+              {payment.lifeGoalOptimization && (
                 <div className="mt-3 ml-8">
                   <label className="text-sm font-medium mb-1 block">Select Primary Goal:</label>
                   <select
-                    value={selectedLifeGoal || ''}
-                    onChange={(e) => setSelectedLifeGoal(e.target.value)}
+                    value={payment.lifeGoal || ''}
+                    onChange={(e) => setLifeGoal(e.target.value || null)}
                     className="w-full p-2 border rounded-md"
                     required
                   >
@@ -281,8 +314,8 @@ const ResultsPreview = ({ onNext, onBack }) => {
               <label className="flex items-start">
                 <input
                   type="checkbox"
-                  checked={paymentOption.editProtection}
-                  onChange={() => setPaymentOption(prev => ({ ...prev, editProtection: !prev.editProtection }))}
+                  checked={payment.editProtection}
+                  onChange={() => setPaymentOption('editProtection', !payment.editProtection)}
                   className="mt-1 mr-3"
                 />
                 <div>
@@ -303,14 +336,14 @@ const ResultsPreview = ({ onNext, onBack }) => {
                 <span>$12.00</span>
               </div>
               
-              {paymentOption.lifeGoalOptimization && (
+              {payment.lifeGoalOptimization && (
                 <div className="flex justify-between mb-1">
                   <span>Life Goal Optimization</span>
                   <span>$5.00</span>
                 </div>
               )}
               
-              {paymentOption.editProtection && (
+              {payment.editProtection && (
                 <div className="flex justify-between mb-1">
                   <span>Edit Protection</span>
                   <span>$3.00</span>
