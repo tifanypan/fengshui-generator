@@ -35,48 +35,55 @@ const FurnitureDisplay = ({
     console.log("Image size:", imageSize);
   }, []);
 
-  // Calculate room boundaries from walls
-  const calculateRoomBoundaries = () => {
-    const walls = wallHighlights.filter(item => item.type === 'wall');
-    
-    let boundaries = {
-      minX: Infinity,
-      minY: Infinity,
-      maxX: -Infinity,
-      maxY: -Infinity
-    };
-    
-    // Find the minimum/maximum coordinates to create a bounding box
-    if (walls.length > 0) {
-      walls.forEach(wall => {
-        boundaries.minX = Math.min(boundaries.minX, wall.left);
-        boundaries.minY = Math.min(boundaries.minY, wall.top);
-        boundaries.maxX = Math.max(boundaries.maxX, wall.left + wall.width);
-        boundaries.maxY = Math.max(boundaries.maxY, wall.top + wall.height);
-      });
-      
-      // Add some padding inside the walls to ensure furniture isn't placed on walls
-      const padding = 5;
-      boundaries.minX += padding;
-      boundaries.minY += padding;
-      boundaries.maxX -= padding;
-      boundaries.maxY -= padding;
-    } else {
-      // If no walls, use image dimensions
-      boundaries = {
-        minX: 0,
-        minY: 0,
-        maxX: imageSize.width,
-        maxY: imageSize.height
-      };
-    }
-    
-    return {
-      ...boundaries,
-      width: boundaries.maxX - boundaries.minX,
-      height: boundaries.maxY - boundaries.minY
-    };
+// Calculate room boundaries from walls or image size
+const calculateRoomBoundaries = () => {
+  const walls = wallHighlights.filter(item => item.type === 'wall');
+  
+  let boundaries = {
+    minX: Infinity,
+    minY: Infinity,
+    maxX: -Infinity,
+    maxY: -Infinity
   };
+  
+  // Use wall highlights to define room boundaries if available
+  if (walls.length > 0) {
+    walls.forEach(wall => {
+      boundaries.minX = Math.min(boundaries.minX, wall.left);
+      boundaries.minY = Math.min(boundaries.minY, wall.top);
+      boundaries.maxX = Math.max(boundaries.maxX, wall.left + wall.width);
+      boundaries.maxY = Math.max(boundaries.maxY, wall.top + wall.height);
+    });
+    
+    // Add some padding inside the walls to ensure furniture isn't placed on walls
+    const padding = 10;
+    boundaries.minX += padding;
+    boundaries.minY += padding;
+    boundaries.maxX -= padding;
+    boundaries.maxY -= padding;
+  } else {
+    // If no walls, use the full image dimensions with some padding
+    const padding = 20;
+    boundaries.minX = padding;
+    boundaries.minY = padding;
+    boundaries.maxX = imageSize.width - padding;
+    boundaries.maxY = imageSize.height - padding;
+  }
+  
+  // Calculate dimensions
+  const width = boundaries.maxX - boundaries.minX;
+  const height = boundaries.maxY - boundaries.minY;
+  
+  // Log for debugging
+  console.log("Room boundaries:", boundaries, "Room dimensions:", { width, height });
+  console.log("Room real-world dimensions:", { width: roomWidth, length: roomLength });
+  
+  return {
+    ...boundaries,
+    width,
+    height
+  };
+};
   
   const roomBoundaries = calculateRoomBoundaries();
   
