@@ -1,29 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
 import logging
+import os
 
-from app.api import room_type, file_upload, elements, layouts, test_layouts
 from app.database.models import create_tables
+from app.api import room_type, file_upload, elements, layouts, test_layouts, floor_plan
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-# Create app
-app = FastAPI(
-    title="Feng Shui Room Generator API",
-    description="API for generating feng shui-optimized room layouts",
-    version="0.1.0"
-)
+app = FastAPI(title="Feng Shui Room Layout Generator API")
 
 # Configure CORS
 origins = [
-    "http://localhost:3000",
+    "http://localhost:3000",  # For local Next.js development
+    "http://localhost:8000",  # For local development
     "http://localhost",
-    os.environ.get("FRONTEND_URL", ""),
+    "*",  # For development only - remove in production!
 ]
 
 app.add_middleware(
@@ -34,21 +24,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+# Create database tables on startup
+@app.on_event("startup")
+def startup_db_client():
+    try:
+        create_tables()
+        logging.info("Database tables created successfully")
+    except Exception as e:
+        logging.error(f"Error creating database tables: {str(e)}")
+
+# Include API routers
 app.include_router(room_type.router)
 app.include_router(file_upload.router)
 app.include_router(elements.router)
 app.include_router(layouts.router)
-
-# Include test routes (these would be disabled in production)
-if os.environ.get("ENVIRONMENT", "development") != "production":
-    app.include_router(test_layouts.router)
-
-# Create database tables on startup
-@app.on_event("startup")
-def startup_event():
-    create_tables()
+app.include_router(test_layouts.router)
+app.include_router(floor_plan.router)
 
 @app.get("/")
-async def root():
-    return {"message": "Feng Shui Room Generator API is running"}
+def read_root():
+    return {"message": "Feng Shui Room Layout Generator API is running"}

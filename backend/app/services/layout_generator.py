@@ -6,10 +6,9 @@ complete layouts with furniture placement and feng shui recommendations.
 """
 import logging
 from typing import Dict, List, Any, Optional
-import json
 
 from app.services.room_analysis import RoomAnalyzer
-from app.services.feng_shui_engine import FengShuiEngine
+from app.services.feng_shui.engine import FengShuiEngine
 
 logger = logging.getLogger(__name__)
 
