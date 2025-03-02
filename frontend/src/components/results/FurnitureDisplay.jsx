@@ -24,16 +24,17 @@ const FurnitureDisplay = ({
 }) => {
   return (
     <div
-      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+      className="absolute top-0 left-0 w-full h-full"
       style={{
         width: imageSize.width,
         height: imageSize.height,
-        zIndex: 10
+        zIndex: 10,
+        pointerEvents: 'none'  // Allow clicks to pass through to furniture
       }}
     >
       {/* Calibration points overlay (for debugging) */}
       {isCalibrated && (
-        <svg width={imageSize.width} height={imageSize.height}>
+        <svg width={imageSize.width} height={imageSize.height} style={{ position: 'absolute', zIndex: 15 }}>
           {/* Draw the calibration area */}
           <polygon 
             points={floorPlan.calibration.points.map(p => `${p.x},${p.y}`).join(' ')} 
@@ -54,139 +55,77 @@ const FurnitureDisplay = ({
           ))}
         </svg>
       )}
-
-      {/* Display bagua map if enabled */}
-      {showBagua && isCalibrated && Object.entries(bagua).map(([area, data]) => {
-        // Calculate bagua position based on percentages within the calibrated room
-        const roomX = data.x / roomWidth;
-        const roomY = data.y / roomLength;
-        const roomW = data.width / roomWidth;
-        const roomH = data.height / roomLength;
-        
-        // Get the calibration points from the floor plan
-        const points = floorPlan.calibration.points;
-        
-        // Transform to image coordinates
-        // Use the imported bilinearInterpolate function
-        const bagua1 = bilinearInterpolate(
-          points[0].x, points[1].x, 
-          points[3].x, points[2].x,
-          roomX, roomY
-        );
-        
-        const bagua2 = bilinearInterpolate(
-          points[0].y, points[1].y, 
-          points[3].y, points[2].y,
-          roomX, roomY
-        );
-        
-        const bagua3 = bilinearInterpolate(
-          points[0].x, points[1].x, 
-          points[3].x, points[2].x,
-          roomX + roomW, roomY + roomH
-        );
-        
-        const bagua4 = bilinearInterpolate(
-          points[0].y, points[1].y, 
-          points[3].y, points[2].y,
-          roomX + roomW, roomY + roomH
-        );
-        
-        const coords = {
-          x: bagua1,
-          y: bagua2,
-          width: bagua3 - bagua1,
-          height: bagua4 - bagua2
-        };
-        
-        return (
-          <div
-            key={area}
-            className="absolute opacity-20"
-            style={{
-              left: coords.x,
-              top: coords.y,
-              width: coords.width,
-              height: coords.height,
-              backgroundColor: data.colors ? data.colors[0] : '#ccc',
-              border: '1px dashed #666'
-            }}
-          >
-            <div className="text-xs opacity-70 text-center mt-2 font-medium">
-              {data.life_area}
-            </div>
-          </div>
-        );
-      })}
       
-      {/* Display energy flow if enabled */}
-      {showEnergy && energyFlows.flow_paths && energyFlows.flow_paths.map((path, index) => {
-        // Transform energy flow coordinates using calibration
-        const start = transformWithCalibration(
-          path.start_x, 
-          path.start_y, 
-          0, 
-          0,
-          isCalibrated,
-          floorPlan.calibration,
-          roomWidth,
-          roomLength,
-          imageSize,
-          bilinearInterpolate
-        );
-        const end = transformWithCalibration(
-          path.end_x, 
-          path.end_y, 
-          0, 
-          0,
-          isCalibrated,
-          floorPlan.calibration,
-          roomWidth,
-          roomLength,
-          imageSize,
-          bilinearInterpolate
-        );
-        
-        return (
-          <svg
-            key={`flow-${index}`}
-            className="absolute top-0 left-0"
-            style={{
-              width: imageSize.width,
-              height: imageSize.height,
-              zIndex: 15
-            }}
-          >
-            <defs>
-              <marker
-                id={`arrow-${index}`}
-                viewBox="0 0 10 10"
-                refX="5"
-                refY="5"
-                markerWidth="4"
-                markerHeight="4"
-                orient="auto-start-reverse"
+      {/* Display bagua map if enabled */}
+      {showBagua && isCalibrated && (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 16 }}>
+          {Object.entries(bagua).map(([area, data]) => {
+            // Calculate bagua position based on percentages within the calibrated room
+            const roomX = data.x / roomWidth;
+            const roomY = data.y / roomLength;
+            const roomW = data.width / roomWidth;
+            const roomH = data.height / roomLength;
+            
+            // Get the calibration points from the floor plan
+            const points = floorPlan.calibration.points;
+            
+            // Transform to image coordinates
+            const bagua1 = bilinearInterpolate(
+              points[0].x, points[1].x, 
+              points[3].x, points[2].x,
+              roomX, roomY
+            );
+            
+            const bagua2 = bilinearInterpolate(
+              points[0].y, points[1].y, 
+              points[3].y, points[2].y,
+              roomX, roomY
+            );
+            
+            const bagua3 = bilinearInterpolate(
+              points[0].x, points[1].x, 
+              points[3].x, points[2].x,
+              roomX + roomW, roomY + roomH
+            );
+            
+            const bagua4 = bilinearInterpolate(
+              points[0].y, points[1].y, 
+              points[3].y, points[2].y,
+              roomX + roomW, roomY + roomH
+            );
+            
+            const coords = {
+              x: bagua1,
+              y: bagua2,
+              width: bagua3 - bagua1,
+              height: bagua4 - bagua2
+            };
+            
+            return (
+              <div
+                key={area}
+                className="absolute opacity-20"
+                style={{
+                  left: coords.x,
+                  top: coords.y,
+                  width: coords.width,
+                  height: coords.height,
+                  backgroundColor: data.colors ? data.colors[0] : '#ccc',
+                  border: '1px dashed #666'
+                }}
               >
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(0, 100, 255, 0.5)" />
-              </marker>
-            </defs>
-            <line
-              x1={start.x}
-              y1={start.y}
-              x2={end.x}
-              y2={end.y}
-              stroke="rgba(0, 100, 255, 0.5)"
-              strokeWidth="4"
-              markerEnd={`url(#arrow-${index})`}
-              strokeDasharray="5,5"
-            />
-          </svg>
-        );
-      })}
+                <div className="text-xs opacity-70 text-center mt-2 font-medium">
+                  {data.life_area}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       
       {/* Furniture Placements */}
       {furniturePlacements && furniturePlacements.length > 0 && (
-        <div className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 20 }}>
+        <div className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 30, pointerEvents: 'none' }}>
           {furniturePlacements.map((furniture) => {
             // Transform furniture coordinates to image scale
             const coords = transformWithCalibration(
@@ -211,6 +150,7 @@ const FurnitureDisplay = ({
                 key={furniture.item_id}
                 className="absolute flex justify-center items-center cursor-pointer transition-all duration-200"
                 style={{
+                  position: 'absolute',
                   width: coords.width,
                   height: coords.height,
                   backgroundColor: getFurnitureColor(furniture),
@@ -220,11 +160,7 @@ const FurnitureDisplay = ({
                       ? '2px dashed #f43f5e' 
                       : '2px solid #333',
                   borderRadius: '2px',
-                  transform: `translate(${coords.x + coords.width/2}px, ${coords.y + coords.height/2}px)
-                            rotate(${furniture.rotation || 0}deg)
-                            translate(-50%, -50%)`,
-                  left: coords.x,
-                  top: coords.y,
+                  transform: `translate(${coords.x}px, ${coords.y}px) rotate(${furniture.rotation || 0}deg)`,
                   transformOrigin: 'center',
                   fontSize: Math.max(10, Math.min(coords.width / 8, 16)),
                   color: '#fff',
@@ -235,7 +171,7 @@ const FurnitureDisplay = ({
                   boxShadow: isSelected 
                     ? '0 0 10px rgba(59, 130, 246, 0.5)' 
                     : '0 2px 4px rgba(0,0,0,0.2)',
-                  zIndex: isSelected ? 30 : 25,
+                  zIndex: isSelected ? 35 : 30,
                   pointerEvents: 'auto'  // Make furniture clickable
                 }}
                 onClick={(e) => {
@@ -281,7 +217,7 @@ const FurnitureDisplay = ({
             top: 5, 
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 35
+            zIndex: 40
           }}>
             {directionLabels.top}
           </div>
@@ -289,7 +225,7 @@ const FurnitureDisplay = ({
             bottom: 5, 
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 35
+            zIndex: 40
           }}>
             {directionLabels.bottom}
           </div>
@@ -297,7 +233,7 @@ const FurnitureDisplay = ({
             left: 5, 
             top: '50%',
             transform: 'translateY(-50%)',
-            zIndex: 35
+            zIndex: 40
           }}>
             {directionLabels.left}
           </div>
@@ -305,7 +241,7 @@ const FurnitureDisplay = ({
             right: 5, 
             top: '50%',
             transform: 'translateY(-50%)',
-            zIndex: 35
+            zIndex: 40
           }}>
             {directionLabels.right}
           </div>

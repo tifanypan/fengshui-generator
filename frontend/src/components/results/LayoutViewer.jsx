@@ -104,133 +104,86 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
   
   return (
     <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">
-          {activeLayout === 'optimal_layout' && 'Optimal Feng Shui Layout'}
-          {activeLayout === 'space_conscious_layout' && 'Space-Conscious Layout'}
-          {activeLayout === 'life_goal_layout' && 'Life Goal Optimized Layout'}
-        </h3>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Button variant="secondary" onClick={handleZoomOut} className="px-2 py-1 text-sm">-</Button>
-            <span className="text-sm">{Math.round(zoomLevel * 100)}%</span>
-            <Button variant="secondary" onClick={handleZoomIn} className="px-2 py-1 text-sm">+</Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <label className="flex items-center text-sm">
-              <input
-                type="checkbox"
-                checked={showBagua}
-                onChange={() => setShowBagua(!showBagua)}
-                className="mr-1"
-              />
-              Bagua
-            </label>
-            <label className="flex items-center text-sm">
-              <input
-                type="checkbox"
-                checked={showEnergy}
-                onChange={() => setShowEnergy(!showEnergy)}
-                className="mr-1"
-              />
-              Energy Flow
-            </label>
-            <label className="flex items-center text-sm">
-              <input
-                type="checkbox"
-                checked={showDimensions}
-                onChange={() => setShowDimensions(!showDimensions)}
-                className="mr-1"
-              />
-              Dimensions
-            </label>
-          </div>
-        </div>
-      </div>
-      
-      {!isCalibrated && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-sm text-yellow-700">
-            <strong>Note:</strong> For best results, please calibrate your room by marking its corners.
-            This ensures furniture is positioned correctly on your floor plan.
-          </p>
-        </div>
-      )}
-      
-      <div className="flex justify-center mb-4">
-        <div className="relative" style={{ maxWidth: '100%', maxHeight: '70vh' }}>
-          {/* Container for floor plan and overlays with zoom applied */}
-          <div 
-            ref={containerRef}
-            className="relative"
-            style={{ 
-              transform: `scale(${zoomLevel})`,
-              transformOrigin: 'top left'
+ // In LayoutViewer.jsx - Restructure the container completely
+
+// Modify this entire section to ensure proper stacking
+<div className="flex justify-center mb-4">
+  <div className="relative" style={{ maxWidth: '100%', maxHeight: '70vh' }}>
+    {/* Zoom container */}
+    <div 
+      ref={containerRef}
+      className="relative"
+      style={{ 
+        transform: `scale(${zoomLevel})`,
+        transformOrigin: 'top left'
+      }}
+    >
+      {/* Base container with explicit stacking context */}
+      <div className="relative" style={{ isolation: 'isolate' }}>
+        {floorPlan.fileUrl ? (
+          <img
+            ref={imageRef}
+            src={floorPlan.fileUrl}
+            alt="Floor Plan"
+            className="max-w-full"
+            style={{
+              width: imageSize.width > 0 ? `${imageSize.width}px` : 'auto',
+              height: imageSize.height > 0 ? `${imageSize.height}px` : 'auto',
+              display: imageLoaded ? 'block' : 'none',
+              objectFit: 'contain',
+              maxWidth: '100%',
+              maxHeight: '100%',
+              position: 'relative',
+              zIndex: 1
             }}
+            onLoad={handleImageLoad}
+          />
+        ) : (
+          <div 
+            className="bg-gray-100 flex items-center justify-center text-gray-400"
+            style={{ width: '800px', height: '600px' }}
           >
-            {/* Original floor plan image */}
-            <div className="relative">
-              {floorPlan.fileUrl ? (
-                <img
-                  ref={imageRef}
-                  src={floorPlan.fileUrl}
-                  alt="Floor Plan"
-                  className="max-w-full"
-                  style={{
-                    width: imageSize.width > 0 ? `${imageSize.width}px` : 'auto',
-                    height: imageSize.height > 0 ? `${imageSize.height}px` : 'auto',
-                    display: imageLoaded ? 'block' : 'none',
-                    objectFit: 'contain',
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    position: 'relative',
-                  }}
-                  onLoad={handleImageLoad}
-                />
-              ) : (
-                <div 
-                  className="bg-gray-100 flex items-center justify-center text-gray-400"
-                  style={{ width: '800px', height: '600px' }}
-                >
-                  No floor plan image available
-                </div>
-              )}
-              
-              {/* Display furniture and overlays when image is loaded */}
-              {imageLoaded && (
-                <FurnitureDisplay
-                  floorPlan={floorPlan}
-                  imageSize={imageSize}
-                  isCalibrated={isCalibrated}
-                  showBagua={showBagua}
-                  showEnergy={showEnergy}
-                  showDimensions={showDimensions}
-                  furniturePlacements={furniturePlacements}
-                  bagua={bagua}
-                  energyFlows={energyFlows}
-                  layoutData={layoutData}
-                  selectedItem={selectedItem}
-                  setSelectedItem={setSelectedItem}
-                  roomWidth={roomWidth}
-                  roomLength={roomLength}
-                  directionLabels={directionLabels}
-                  transformWithCalibration={(x, y, width, height) => 
-                    transformWithCalibration(
-                      x, y, width, height, 
-                      isCalibrated, 
-                      floorPlan.calibration, 
-                      roomWidth, 
-                      roomLength, 
-                      imageSize, 
-                      bilinearInterpolate
-                    )
-                  }
-                />
-              )}
-            </div>
+            No floor plan image available
           </div>
-        </div>
+        )}
+        
+        {/* Display furniture and overlays when image is loaded */}
+        {imageLoaded && (
+          <div className="absolute top-0 left-0" style={{ width: '100%', height: '100%', zIndex: 2 }}>
+            <FurnitureDisplay
+              floorPlan={floorPlan}
+              imageSize={imageSize}
+              isCalibrated={isCalibrated}
+              showBagua={showBagua}
+              showEnergy={showEnergy}
+              showDimensions={showDimensions}
+              furniturePlacements={furniturePlacements}
+              bagua={bagua}
+              energyFlows={energyFlows}
+              layoutData={layoutData}
+              selectedItem={selectedItem}
+              setSelectedItem={setSelectedItem}
+              roomWidth={roomWidth}
+              roomLength={roomLength}
+              directionLabels={directionLabels}
+              transformWithCalibration={(x, y, width, height) => 
+                transformWithCalibration(
+                  x, y, width, height, 
+                  isCalibrated, 
+                  floorPlan.calibration, 
+                  roomWidth, 
+                  roomLength, 
+                  imageSize, 
+                  bilinearInterpolate
+                )
+              }
+            />
+          </div>
+        )}
       </div>
+    </div>
+  </div>
+</div>
       
       {/* Layout Statistics & Details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
