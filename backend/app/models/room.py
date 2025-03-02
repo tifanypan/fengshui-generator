@@ -2,14 +2,8 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database.session import Base
+from app.models.room_type import RoomType  # Import the RoomType class from its new location
 
-class RoomType(Base):
-    __tablename__ = "room_types"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    code = Column(String(50), unique=True, index=True)
-    name = Column(String(100))
-    
 class FloorPlan(Base):
     __tablename__ = "floor_plans"
     
