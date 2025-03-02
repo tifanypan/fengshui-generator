@@ -11,6 +11,7 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
   const [selectedItem, setSelectedItem] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0, naturalWidth: 0, naturalHeight: 0 });
+  const [isCalibrated, setIsCalibrated] = useState(false);
   
   // Refs for the container and original floor plan image
   const containerRef = useRef(null);
@@ -30,6 +31,15 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
   useEffect(() => {
     setSelectedItem(null);
   }, [activeLayout]);
+  
+  // Check if calibration data exists
+  useEffect(() => {
+    if (floorPlan.calibration?.points && floorPlan.calibration.points.length === 4) {
+      setIsCalibrated(true);
+    } else {
+      setIsCalibrated(false);
+    }
+  }, [floorPlan.calibration]);
   
   // Initialize image dimensions when the image loads
   const handleImageLoad = () => {
@@ -74,23 +84,76 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
     ? layoutData.tradeoffs.filter(t => t.item_id === selectedItem.item_id)
     : [];
   
-  // Calculate coordinate transformation between floorplan image and layout coordinates
-  const transformCoordinates = (x, y, width, height) => {
-    if (!imageLoaded || imageSize.width === 0) {
-      return { x: 0, y: 0, width: 0, height: 0 };
+  // Function to transform room coordinates to image coordinates using calibration
+  const transformWithCalibration = (x, y, width, height) => {
+    // If not calibrated, use simple scaling (centered on image)
+    if (!isCalibrated || !floorPlan.calibration) {
+      const scaleX = imageSize.width / roomWidth;
+      const scaleY = imageSize.height / roomLength;
+      
+      return {
+        x: x * scaleX,
+        y: y * scaleY,
+        width: width * scaleX,
+        height: height * scaleY
+      };
     }
     
-    // Scale factors to convert from meters to pixels
-    const scaleX = imageSize.width / roomWidth;
-    const scaleY = imageSize.height / roomLength;
+    // With calibration, use the calibration points to create a transformation
+    const calibration = floorPlan.calibration;
+    const points = calibration.points;
     
-    // Calculate pixel coordinates
+    // Calculate room coordinates as percentages of room dimensions
+    const roomX = x / roomWidth;
+    const roomY = y / roomLength;
+    const roomW = width / roomWidth;
+    const roomH = height / roomLength;
+    
+    // Use bilinear interpolation to map room coordinates to image coordinates
+    // For the top-left corner of the furniture
+    const topLeftX = bilinearInterpolate(
+      points[0].x, points[1].x, points[3].x, points[2].x,
+      roomX, roomY
+    );
+    
+    const topLeftY = bilinearInterpolate(
+      points[0].y, points[1].y, points[3].y, points[2].y,
+      roomX, roomY
+    );
+    
+    // For the bottom-right corner of the furniture
+    const bottomRightX = bilinearInterpolate(
+      points[0].x, points[1].x, points[3].x, points[2].x,
+      roomX + roomW, roomY + roomH
+    );
+    
+    const bottomRightY = bilinearInterpolate(
+      points[0].y, points[1].y, points[3].y, points[2].y,
+      roomX + roomW, roomY + roomH
+    );
+    
+    // Calculate width and height in image coordinates
+    const imageWidth = bottomRightX - topLeftX;
+    const imageHeight = bottomRightY - topLeftY;
+    
     return {
-      x: x * scaleX,
-      y: y * scaleY,
-      width: width * scaleX,
-      height: height * scaleY
+      x: topLeftX,
+      y: topLeftY,
+      width: imageWidth,
+      height: imageHeight
     };
+  };
+  
+  // Bilinear interpolation function
+  const bilinearInterpolate = (q00, q10, q01, q11, x, y) => {
+    // Ensure x and y are bounded between 0 and 1
+    x = Math.max(0, Math.min(1, x));
+    y = Math.max(0, Math.min(1, y));
+    
+    // Interpolate
+    const r1 = (1 - x) * q00 + x * q10;
+    const r2 = (1 - x) * q01 + x * q11;
+    return (1 - y) * r1 + y * r2;
   };
   
   // Calculate direction labels based on compass orientation
@@ -153,6 +216,15 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
         </div>
       </div>
       
+      {!isCalibrated && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-sm text-yellow-700">
+            <strong>Note:</strong> For best results, please calibrate your room by marking its corners.
+            This ensures furniture is positioned correctly on your floor plan.
+          </p>
+        </div>
+      )}
+      
       <div className="flex justify-center mb-4 overflow-auto">
         <div className="relative" style={{ maxWidth: '100%', maxHeight: '70vh', overflow: 'auto' }}>
           {/* Container for floor plan and overlays with zoom applied */}
@@ -190,6 +262,32 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
               </div>
             )}
             
+            {/* Calibration points overlay (for debugging) */}
+            {isCalibrated && (
+              <div className="absolute top-0 left-0 pointer-events-none">
+                <svg width={imageSize.width} height={imageSize.height}>
+                  {/* Draw the calibration area */}
+                  <polygon 
+                    points={floorPlan.calibration.points.map(p => `${p.x},${p.y}`).join(' ')} 
+                    fill="none" 
+                    stroke="rgba(0, 255, 0, 0.3)" 
+                    strokeWidth="2"
+                  />
+                  
+                  {/* Draw the calibration points */}
+                  {floorPlan.calibration.points.map((point, index) => (
+                    <circle 
+                      key={index}
+                      cx={point.x}
+                      cy={point.y}
+                      r="4"
+                      fill="rgba(0, 255, 0, 0.5)"
+                    />
+                  ))}
+                </svg>
+              </div>
+            )}
+            
             {/* Overlay layers - only show when image is loaded */}
             {imageLoaded && (
               <div 
@@ -200,8 +298,45 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
                 }}
               >
                 {/* Display bagua map if enabled */}
-                {showBagua && Object.entries(bagua).map(([area, data]) => {
-                  const coords = transformCoordinates(data.x, data.y, data.width, data.height);
+                {showBagua && isCalibrated && Object.entries(bagua).map(([area, data]) => {
+                  // Calculate bagua position based on percentages within the calibrated room
+                  const roomX = data.x / roomWidth;
+                  const roomY = data.y / roomLength;
+                  const roomW = data.width / roomWidth;
+                  const roomH = data.height / roomLength;
+                  
+                  // Transform to image coordinates
+                  const bagua1 = bilinearInterpolate(
+                    floorPlan.calibration.points[0].x, floorPlan.calibration.points[1].x, 
+                    floorPlan.calibration.points[3].x, floorPlan.calibration.points[2].x,
+                    roomX, roomY
+                  );
+                  
+                  const bagua2 = bilinearInterpolate(
+                    floorPlan.calibration.points[0].y, floorPlan.calibration.points[1].y, 
+                    floorPlan.calibration.points[3].y, floorPlan.calibration.points[2].y,
+                    roomX, roomY
+                  );
+                  
+                  const bagua3 = bilinearInterpolate(
+                    floorPlan.calibration.points[0].x, floorPlan.calibration.points[1].x, 
+                    floorPlan.calibration.points[3].x, floorPlan.calibration.points[2].x,
+                    roomX + roomW, roomY + roomH
+                  );
+                  
+                  const bagua4 = bilinearInterpolate(
+                    floorPlan.calibration.points[0].y, floorPlan.calibration.points[1].y, 
+                    floorPlan.calibration.points[3].y, floorPlan.calibration.points[2].y,
+                    roomX + roomW, roomY + roomH
+                  );
+                  
+                  const coords = {
+                    x: bagua1,
+                    y: bagua2,
+                    width: bagua3 - bagua1,
+                    height: bagua4 - bagua2
+                  };
+                  
                   return (
                     <div
                       key={area}
@@ -224,8 +359,10 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
                 
                 {/* Display energy flow if enabled */}
                 {showEnergy && energyFlows.flow_paths && energyFlows.flow_paths.map((path, index) => {
-                  const start = transformCoordinates(path.start_x, path.start_y, 0, 0);
-                  const end = transformCoordinates(path.end_x, path.end_y, 0, 0);
+                  // Transform energy flow coordinates using calibration
+                  const start = transformWithCalibration(path.start_x, path.start_y, 0, 0);
+                  const end = transformWithCalibration(path.end_x, path.end_y, 0, 0);
+                  
                   return (
                     <svg
                       key={`flow-${index}`}
@@ -268,7 +405,7 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
                   <div className="absolute top-0 left-0 w-full h-full">
                     {furniturePlacements.map((furniture) => {
                       // Transform furniture coordinates to image scale
-                      const coords = transformCoordinates(
+                      const coords = transformWithCalibration(
                         furniture.x, 
                         furniture.y, 
                         furniture.width, 
@@ -278,6 +415,10 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
                       // Determine if this furniture has issues (from tradeoffs)
                       const hasIssues = layoutData.tradeoffs.some(t => t.item_id === furniture.item_id);
                       const isSelected = selectedItem && selectedItem.item_id === furniture.item_id;
+                      
+                      // Determine rotation center
+                      const centerX = coords.x + coords.width / 2;
+                      const centerY = coords.y + coords.height / 2;
                       
                       return (
                         <div
@@ -295,7 +436,7 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
                                 ? '2px dashed #f43f5e' 
                                 : '2px solid #333',
                             borderRadius: '2px',
-                            transform: `rotate(${furniture.rotation || 0}deg)`,
+                            transform: `translate(-50%, -50%) translate(${centerX}px, ${centerY}px) rotate(${furniture.rotation || 0}deg) translate(-50%, -50%)`,
                             fontSize: Math.max(10, Math.min(coords.width / 8, 16)),
                             color: '#fff',
                             textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
