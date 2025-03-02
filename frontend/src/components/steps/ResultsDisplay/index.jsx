@@ -413,14 +413,19 @@ const ResultsDisplay = ({ onBack }) => {
             )}
           </div>
           
-          {/* Layout Viewer */}
-          {layouts && (
-            <LayoutViewer 
-              layouts={layouts}
-              activeLayout={activeLayout}
-              onChangeLayout={setActiveLayout}
-            />
-          )}
+{/* Debugging - Log Layout Data */}
+{layouts && console.log("Active Layout Data:", layouts[activeLayout])}
+
+{/* Layout Viewer */}
+{layouts && layouts[activeLayout] && (
+  <LayoutViewer 
+    layouts={layouts}
+    activeLayout={activeLayout}
+    onChangeLayout={setActiveLayout}
+  />
+)}
+
+
         </div>
         
         {/* Right Column - Purchase Info & Recommendations */}
