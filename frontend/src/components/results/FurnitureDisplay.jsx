@@ -22,25 +22,21 @@ const FurnitureDisplay = ({
   roomLength,
   directionLabels,
 }) => {
+  // Add a state variable to control showing the calibration boundary
+  const showCalibrationBoundary = true; // You can make this a prop or toggle
+
   return (
-    <div
-      className="absolute top-0 left-0 w-full h-full"
-      style={{
-        width: imageSize.width,
-        height: imageSize.height,
-        zIndex: 10,
-        pointerEvents: 'none'  // Allow clicks to pass through to furniture
-      }}
-    >
-      {/* Calibration points overlay (for debugging) */}
-      {isCalibrated && (
-        <svg width={imageSize.width} height={imageSize.height} style={{ position: 'absolute', zIndex: 15 }}>
-          {/* Draw the calibration area */}
+    <>
+      {/* Calibration boundary - shows the walls defined in step 2 */}
+      {isCalibrated && showCalibrationBoundary && (
+        <svg width={imageSize.width} height={imageSize.height} style={{ position: 'absolute', zIndex: 12, top: 0, left: 0 }}>
+          {/* Draw the calibration boundary/walls */}
           <polygon 
             points={floorPlan.calibration.points.map(p => `${p.x},${p.y}`).join(' ')} 
             fill="none" 
-            stroke="rgba(0, 255, 0, 0.3)" 
+            stroke="rgba(0, 100, 255, 0.5)" 
             strokeWidth="2"
+            strokeDasharray="5,5"
           />
           
           {/* Draw the calibration points */}
@@ -50,7 +46,7 @@ const FurnitureDisplay = ({
               cx={point.x}
               cy={point.y}
               r="4"
-              fill="rgba(0, 255, 0, 0.5)"
+              fill="rgba(0, 100, 255, 0.5)"
             />
           ))}
         </svg>
@@ -123,9 +119,18 @@ const FurnitureDisplay = ({
         </div>
       )}
       
-      {/* Furniture Placements */}
+      {/* Furniture Placements - Give this the highest z-index */}
       {furniturePlacements && furniturePlacements.length > 0 && (
-        <div className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 30, pointerEvents: 'none' }}>
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            width: '100%', 
+            height: '100%', 
+            zIndex: 30 
+          }}
+        >
           {furniturePlacements.map((furniture) => {
             // Transform furniture coordinates to image scale
             const coords = transformWithCalibration(
@@ -148,7 +153,7 @@ const FurnitureDisplay = ({
             return (
               <div
                 key={furniture.item_id}
-                className="absolute flex justify-center items-center cursor-pointer transition-all duration-200"
+                className="flex justify-center items-center cursor-pointer transition-all duration-200"
                 style={{
                   position: 'absolute',
                   width: coords.width,
@@ -247,7 +252,7 @@ const FurnitureDisplay = ({
           </div>
         </>
       )}
-    </div>
+    </>
   );
 };
 
