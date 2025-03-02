@@ -91,8 +91,9 @@ const RoomFeatures = ({ onNext, onBack }) => {
     : null;
   
   // Define canvas dimensions - making sure they're consistent
-  const canvasWidth = 800;
-  const canvasHeight = 600;
+  const canvasWidth = floorPlan.dimensions?.width || 800;
+  const canvasHeight = floorPlan.dimensions?.height || 600;
+  
   
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -168,13 +169,15 @@ const RoomFeatures = ({ onNext, onBack }) => {
           className="flex justify-center items-center mb-4" 
           style={{ 
             width: '100%',
-            height: canvasHeight,
+            // height: canvasHeight,
             position: 'relative',
             overflow: 'hidden',
             backgroundColor: '#f8f9fa'
           }}
         >
+          {/* <HighlightCanvas width={canvasWidth} height={canvasHeight} /> */}
           <HighlightCanvas width={canvasWidth} height={canvasHeight} />
+
         </div>
       </div>
       

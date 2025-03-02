@@ -44,16 +44,27 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
   // Initialize image dimensions when the image loads
   const handleImageLoad = () => {
     if (imageRef.current) {
-      const { width, height, naturalWidth, naturalHeight } = imageRef.current;
+      const { naturalWidth, naturalHeight } = imageRef.current;
+      const containerWidth = containerRef.current?.clientWidth || 800;
+      const containerHeight = containerRef.current?.clientHeight || 600;
+  
+      // Scale while maintaining aspect ratio
+      const scale = Math.min(
+        containerWidth / naturalWidth,
+        containerHeight / naturalHeight
+      );
+  
       setImageSize({
-        width,
-        height,
+        width: naturalWidth * scale,
+        height: naturalHeight * scale,
         naturalWidth,
         naturalHeight
       });
+  
       setImageLoaded(true);
     }
   };
+  
   
   // Adjust container dimensions based on image size
   useEffect(() => {
@@ -238,29 +249,30 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
           >
             {/* Original floor plan image */}
             {floorPlan.fileUrl ? (
-              <img
-                ref={imageRef}
-                src={floorPlan.fileUrl}
-                alt="Floor Plan"
-                className="max-w-full"
-                style={{ display: imageLoaded ? 'block' : 'none' }}
-                onLoad={handleImageLoad}
-              />
-            ) : (
-              <div 
-                className="bg-gray-100 flex items-center justify-center text-gray-400"
-                style={{ width: '800px', height: '600px' }}
-              >
-                No floor plan image available
-              </div>
-            )}
-            
-            {/* Loading indicator */}
-            {floorPlan.fileUrl && !imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <p>Loading floor plan...</p>
-              </div>
-            )}
+  <img
+    ref={imageRef}
+    src={floorPlan.fileUrl}
+    alt="Floor Plan"
+    className="max-w-full"
+    style={{ 
+      width: imageSize.width > 0 ? `${imageSize.width * zoomLevel}px` : 'auto',  
+      height: imageSize.height > 0 ? `${imageSize.height * zoomLevel}px` : 'auto',
+      display: imageLoaded ? 'block' : 'none',
+      objectFit: 'contain',
+      maxWidth: '100%',
+      maxHeight: '100%',
+    }}
+    onLoad={handleImageLoad}
+  />
+) : (
+  <div 
+    className="bg-gray-100 flex items-center justify-center text-gray-400"
+    style={{ width: '800px', height: '600px' }}
+  >
+    No floor plan image available
+  </div>
+)}
+
             
             {/* Calibration points overlay (for debugging) */}
             {isCalibrated && (

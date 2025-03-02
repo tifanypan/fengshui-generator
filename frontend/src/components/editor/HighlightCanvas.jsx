@@ -59,57 +59,56 @@ const HighlightCanvas = ({ width, height }) => {
   }, [width, height, initHighlightHistory]);
   
   // Load floor plan image with better fit approach
-  useEffect(() => {
-    if (ctx && floorPlan.fileUrl) {
+// Load floor plan image while preserving the correct aspect ratio
+useEffect(() => {
+  if (ctx && floorPlan.fileUrl) {
       console.log("Loading image from URL:", floorPlan.fileUrl);
       setImageLoaded(false);
-      
+
       const img = new Image();
       img.onload = () => {
-        console.log("Image loaded successfully:", img.width, "x", img.height);
-        setImageObj(img);
-        
-        // Clear the canvas
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        
-        // Calculate scale to fit image while maintaining aspect ratio
-        // IMPORTANT: Using a lower scale (65%) to ensure the entire image fits with padding
-        const scale = Math.min(
-          (width * 0.65) / img.width,
-          (height * 0.65) / img.height
-        );
-        
-        // Calculate dimensions, ensuring whole pixels
-        const scaledWidth = Math.floor(img.width * scale);
-        const scaledHeight = Math.floor(img.height * scale);
-        
-        // Center on canvas
-        const x = Math.floor((width - scaledWidth) / 2);
-        const y = Math.floor((height - scaledHeight) / 2);
-        
-        console.log("Positioning image at:", x, y, "with size:", scaledWidth, "x", scaledHeight);
-        console.log("Using scale:", scale);
-        
-        setImgDimensions({ x, y, width: scaledWidth, height: scaledHeight });
-        
-        // Draw the image
-        ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-        
-        // Draw highlights over the image
-        drawHighlights();
-        
-        setImageLoaded(true);
+          console.log("Image loaded successfully:", img.width, "x", img.height);
+          setImageObj(img);
+
+          // Calculate aspect ratio to prevent distortion
+          const aspectRatio = img.width / img.height;
+          let scaledWidth = width;
+          let scaledHeight = height;
+
+          // Scale the image while keeping the aspect ratio
+          if (width / height > aspectRatio) {
+              scaledWidth = height * aspectRatio;
+          } else {
+              scaledHeight = width / aspectRatio;
+          }
+
+          // Set the canvas size dynamically
+          const canvas = canvasRef.current;
+          canvas.width = scaledWidth;
+          canvas.height = scaledHeight;
+
+          ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+
+          setImgDimensions({
+              x: 0,
+              y: 0,
+              width: scaledWidth,
+              height: scaledHeight
+          });
+
+          drawHighlights();
+          setImageLoaded(true);
       };
-      
+
       img.onerror = (error) => {
-        console.error("Error loading image:", error);
-        setImageLoaded(false);
+          console.error("Error loading image:", error);
+          setImageLoaded(false);
       };
-      
+
       img.src = floorPlan.fileUrl;
-    }
-  }, [ctx, floorPlan.fileUrl, width, height]);
+  }
+}, [ctx, floorPlan.fileUrl, width, height]);
+
   
   // Render highlights when they change
   useEffect(() => {
@@ -356,10 +355,14 @@ const HighlightCanvas = ({ width, height }) => {
       )}
       
       <canvas 
-        ref={canvasRef} 
-        width={width}
-        height={height}
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+  ref={canvasRef}
+  width={width}
+  height={height}
+  style={{
+    maxWidth: '100%',
+    height: 'auto',
+    display: 'block'
+  }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
