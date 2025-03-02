@@ -58,6 +58,9 @@ import logging
 # Import API routers
 from app.api import room_type, file_upload, elements, layouts, floor_plan
 
+# Import database initialization function
+from app.database.session import init_db
+
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -95,13 +98,20 @@ async def root():
         "version": "1.0.0",
     }
 
-# Create uploads directory if it doesn't exist
+# Startup event to create uploads directory AND initialize database
 @app.on_event("startup")
 async def startup_event():
+    """Startup tasks: create uploads directory and ensure DB tables exist."""
+    # Ensure uploads directory exists
     uploads_dir = os.path.join(os.getcwd(), "uploads")
     if not os.path.exists(uploads_dir):
         os.makedirs(uploads_dir)
         logger.info(f"Created uploads directory at {uploads_dir}")
+    
+    # Ensure database tables exist
+    logger.info("Initializing database and creating tables if missing...")
+    init_db()  # Auto-creates tables if they don’t exist
+    
     logger.info("Application startup complete")
 
 # Optional - test endpoint for confirming connection

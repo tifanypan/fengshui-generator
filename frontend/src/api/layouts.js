@@ -13,22 +13,23 @@ import api from './index';
 export const generateLayouts = async (floorPlanId, furnitureSelections, primaryLifeGoal = null) => {
   // Prepare payload with all required fields
   const payload = {
-    // First ensure all furniture items have the complete structure the backend expects
-    items: Object.entries(furnitureSelections.items || {})
-      .filter(([_, item]) => item.quantity > 0)
-      .reduce((acc, [id, item]) => {
-        acc[id] = {
-          quantity: item.quantity,
-          dimensions: {
-            width: item.dimensions?.width || 0,
-            height: item.dimensions?.height || 0
-          },
-          customName: item.customName || null,
-          type: item.type || 'furniture',
-          fengShuiRole: item.fengShuiRole || 'balance'
-        };
-        return acc;
-      }, {}),
+    furniture_selections: {
+      items: Object.entries(furnitureSelections.items || {})
+        .filter(([_, item]) => item.quantity > 0)
+        .reduce((acc, [id, item]) => {
+          acc[id] = {
+            quantity: item.quantity,
+            dimensions: {
+              width: item.dimensions?.width || 0,
+              height: item.dimensions?.height || 0
+            },
+            customName: item.customName || null,
+            type: item.type || 'furniture',
+            fengShuiRole: item.fengShuiRole || 'balance'
+          };
+          return acc;
+        }, {})
+    },
     
     // Ensure specialConsiderations has all expected fields
     specialConsiderations: {
