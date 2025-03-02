@@ -23,6 +23,9 @@ export const floorPlanSlice = (set, get) => ({
     },
     isLoading: false,
     error: null,
+    highlights: {
+      items: [], // Store highlights (walls, doors, windows) for use in step 6
+    },
   },
   
   gridSettings: {
@@ -151,4 +154,17 @@ export const floorPlanSlice = (set, get) => ({
       },
     },
   })),
+  
+  // New method to sync highlights to floorPlan
+  syncHighlightsToFloorPlan: () => {
+    const { highlights } = get();
+    set((state) => ({
+      floorPlan: {
+        ...state.floorPlan,
+        highlights: {
+          items: [...highlights.items]
+        }
+      }
+    }));
+  },
 });

@@ -9,7 +9,7 @@ import { transformWithCalibration, bilinearInterpolate } from '../../utils/coord
 import { getDirectionLabels } from '../../utils/compassUtils';
 
 const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout }) => {
-  const { floorPlan } = useStore();
+  const { floorPlan, highlights } = useStore();
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showBagua, setShowBagua] = useState(false);
   const [showEnergy, setShowEnergy] = useState(false);
@@ -78,6 +78,9 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
       containerRef.current.style.height = `${imageSize.height * zoomLevel}px`;
     }
   }, [imageSize, zoomLevel, imageLoaded]);
+
+  // Add controls for wall visibility
+  const [showWalls, setShowWalls] = useState(true);
   
   if (!layoutData) {
     return (
@@ -104,6 +107,45 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
   
   return (
     <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
+      {/* Layout control buttons */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          <button 
+            className={`px-3 py-1 text-sm rounded ${showWalls ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+            onClick={() => setShowWalls(!showWalls)}
+          >
+            {showWalls ? 'Hide Walls' : 'Show Walls'}
+          </button>
+          <button 
+            className={`px-3 py-1 text-sm rounded ${showBagua ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+            onClick={() => setShowBagua(!showBagua)}
+          >
+            {showBagua ? 'Hide Bagua' : 'Show Bagua'}
+          </button>
+          <button 
+            className={`px-3 py-1 text-sm rounded ${showDimensions ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+            onClick={() => setShowDimensions(!showDimensions)}
+          >
+            {showDimensions ? 'Hide Dimensions' : 'Show Dimensions'}
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300"
+            onClick={handleZoomOut}
+          >
+            -
+          </button>
+          <span className="px-2 py-1 text-sm">{Math.round(zoomLevel * 100)}%</span>
+          <button
+            className="px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300"
+            onClick={handleZoomIn}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
       {/* Main layout display container */}
       <div className="flex justify-center mb-4">
         <div className="relative overflow-hidden" style={{ maxWidth: '100%', maxHeight: '70vh' }}>
@@ -151,7 +193,13 @@ const LayoutViewer = ({ layouts, activeLayout = 'optimal_layout', onChangeLayout
               {imageLoaded && (
                 <div className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 10 }}>
                   <FurnitureDisplay
-                    floorPlan={floorPlan}
+                    floorPlan={{
+                      ...floorPlan,
+                      highlights: {
+                        ...highlights,
+                        items: showWalls ? highlights.items : []
+                      }
+                    }}
                     imageSize={imageSize}
                     isCalibrated={isCalibrated}
                     showBagua={showBagua}

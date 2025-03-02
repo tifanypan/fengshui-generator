@@ -7,15 +7,20 @@ import FengShuiRecommendations from '../../results/FengShuiRecommendations';
 import { generateLayouts } from '../../../api/layouts';
 
 const ResultsDisplay = ({ onBack }) => {
-  const { floorPlan, furniture, payment } = useStore();
+  const { floorPlan, furniture, payment, highlights } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [layouts, setLayouts] = useState(null);
   const [activeLayout, setActiveLayout] = useState('optimal_layout');
   const [error, setError] = useState(null);
   
   // Debug panel state for development
-  const [showDebug, setShowDebug] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
   const [manualId, setManualId] = useState(floorPlan.id || 1);
+  
+  // Log the highlights from floorPlan
+  useEffect(() => {
+    console.log("Highlights available for layout viewer:", highlights.items);
+  }, [highlights.items]);
   
   // Generate layouts when component mounts
   useEffect(() => {
@@ -353,6 +358,9 @@ const ResultsDisplay = ({ onBack }) => {
             <p className="text-sm text-yellow-700">
               <strong>Furniture Count:</strong> {Object.values(furniture.items).reduce((count, item) => count + (item.quantity || 0), 0)}
             </p>
+            <p className="text-sm text-yellow-700">
+              <strong>Highlights Count:</strong> {highlights.items.length}
+            </p>
           </div>
           
           <div className="flex items-center space-x-2">
@@ -413,19 +421,24 @@ const ResultsDisplay = ({ onBack }) => {
             )}
           </div>
           
-{/* Debugging - Log Layout Data */}
-{layouts && console.log("Active Layout Data:", layouts[activeLayout])}
+          {/* Debugging button to toggle debug view */}
+          <div className="flex justify-end mb-2">
+            <button
+              className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              onClick={() => setShowDebug(!showDebug)}
+            >
+              {showDebug ? 'Hide Debug' : 'Show Debug'}
+            </button>
+          </div>
 
-{/* Layout Viewer */}
-{layouts && layouts[activeLayout] && (
-  <LayoutViewer 
-    layouts={layouts}
-    activeLayout={activeLayout}
-    onChangeLayout={setActiveLayout}
-  />
-)}
-
-
+          {/* Layout Viewer */}
+          {layouts && layouts[activeLayout] && (
+            <LayoutViewer 
+              layouts={layouts}
+              activeLayout={activeLayout}
+              onChangeLayout={setActiveLayout}
+            />
+          )}
         </div>
         
         {/* Right Column - Purchase Info & Recommendations */}
@@ -468,6 +481,10 @@ const ResultsDisplay = ({ onBack }) => {
               <li>
                 <span className="font-medium">Furniture:</span> {' '}
                 {Object.values(furniture.items).reduce((total, item) => total + (item.quantity || 0), 0)} items
+              </li>
+              <li>
+                <span className="font-medium">Wall Sections:</span> {' '}
+                {highlights.items.filter(item => item.type === 'wall').length}
               </li>
             </ul>
           </div>

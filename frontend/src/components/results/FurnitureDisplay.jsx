@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { getFurnitureColor, getFurnitureNameById } from '../../utils/furnitureUtils';
-import { transformWithCalibration, bilinearInterpolate } from '../../utils/coordinateTransforms';
 
 /**
  * Component to display furniture and overlays on the floor plan
@@ -24,88 +23,192 @@ const FurnitureDisplay = ({
 }) => {
   // Add a state variable to control showing the calibration boundary
   const showCalibrationBoundary = true; // You can make this a prop or toggle
+  
+  // Get wall highlights from the floorPlan state
+  const wallHighlights = floorPlan.highlights?.items || [];
+
+  // Log when component mounts to debug the wall data
+  useEffect(() => {
+    console.log("Wall highlights:", wallHighlights);
+    console.log("Furniture placements:", furniturePlacements);
+    console.log("Room dimensions:", roomWidth, "x", roomLength);
+    console.log("Image size:", imageSize);
+  }, []);
+
+  // Calculate room boundaries from walls
+  const calculateRoomBoundaries = () => {
+    const walls = wallHighlights.filter(item => item.type === 'wall');
+    
+    let boundaries = {
+      minX: Infinity,
+      minY: Infinity,
+      maxX: -Infinity,
+      maxY: -Infinity
+    };
+    
+    // Find the minimum/maximum coordinates to create a bounding box
+    if (walls.length > 0) {
+      walls.forEach(wall => {
+        boundaries.minX = Math.min(boundaries.minX, wall.left);
+        boundaries.minY = Math.min(boundaries.minY, wall.top);
+        boundaries.maxX = Math.max(boundaries.maxX, wall.left + wall.width);
+        boundaries.maxY = Math.max(boundaries.maxY, wall.top + wall.height);
+      });
+      
+      // Add some padding inside the walls to ensure furniture isn't placed on walls
+      const padding = 5;
+      boundaries.minX += padding;
+      boundaries.minY += padding;
+      boundaries.maxX -= padding;
+      boundaries.maxY -= padding;
+    } else {
+      // If no walls, use image dimensions
+      boundaries = {
+        minX: 0,
+        minY: 0,
+        maxX: imageSize.width,
+        maxY: imageSize.height
+      };
+    }
+    
+    return {
+      ...boundaries,
+      width: boundaries.maxX - boundaries.minX,
+      height: boundaries.maxY - boundaries.minY
+    };
+  };
+  
+  const roomBoundaries = calculateRoomBoundaries();
+  
+  // Convert furniture coordinates to screen coordinates within the wall boundaries
+  const positionFurniture = (furniture, index, totalFurniture) => {
+    // For the mock data, we need to distribute furniture within the actual wall boundaries
+    // This approach divides the available space based on total furniture
+    
+    // Calculate rows and columns for a grid layout
+    const itemsPerRow = Math.ceil(Math.sqrt(totalFurniture));
+    const rows = Math.ceil(totalFurniture / itemsPerRow);
+    
+    // Calculate grid position
+    const rowIndex = Math.floor(index / itemsPerRow);
+    const colIndex = index % itemsPerRow;
+    
+    // Calculate cell size
+    const cellWidth = roomBoundaries.width / itemsPerRow;
+    const cellHeight = roomBoundaries.height / rows;
+    
+    // Calculate position within the cell (with some margin)
+    const margin = 5;
+    const posX = roomBoundaries.minX + (colIndex * cellWidth) + (cellWidth / 2);
+    const posY = roomBoundaries.minY + (rowIndex * cellHeight) + (cellHeight / 2);
+    
+    // Scale furniture based on the available cell size and furniture dimensions
+    // Use a percentage of the cell size to leave some spacing
+    const maxWidth = cellWidth * 0.8;
+    const maxHeight = cellHeight * 0.8;
+    
+    // Calculate aspect ratio of furniture
+    const furnitureRatio = furniture.width / furniture.height;
+    
+    // Determine scaled dimensions based on aspect ratio
+    let scaledWidth, scaledHeight;
+    
+    if (furnitureRatio > 1) {
+      // Wider than tall
+      scaledWidth = Math.min(maxWidth, furniture.width);
+      scaledHeight = scaledWidth / furnitureRatio;
+    } else {
+      // Taller than wide
+      scaledHeight = Math.min(maxHeight, furniture.height);
+      scaledWidth = scaledHeight * furnitureRatio;
+    }
+    
+    // Ensure minimum size
+    scaledWidth = Math.max(scaledWidth, 20);
+    scaledHeight = Math.max(scaledHeight, 20);
+    
+    return {
+      x: posX,
+      y: posY,
+      width: scaledWidth,
+      height: scaledHeight
+    };
+  };
 
   return (
     <>
-      {/* Calibration boundary - shows the walls defined in step 2 */}
-      {isCalibrated && showCalibrationBoundary && (
-        <svg width={imageSize.width} height={imageSize.height} style={{ position: 'absolute', zIndex: 12, top: 0, left: 0 }}>
-          {/* Draw the calibration boundary/walls */}
-          <polygon 
-            points={floorPlan.calibration.points.map(p => `${p.x},${p.y}`).join(' ')} 
-            fill="none" 
-            stroke="rgba(0, 100, 255, 0.5)" 
-            strokeWidth="2"
-            strokeDasharray="5,5"
+      {/* Draw room boundaries for debugging */}
+      <div style={{
+        position: 'absolute',
+        left: roomBoundaries.minX,
+        top: roomBoundaries.minY,
+        width: roomBoundaries.width,
+        height: roomBoundaries.height,
+        border: '1px dashed blue',
+        zIndex: 11,
+        pointerEvents: 'none'
+      }} />
+      
+      {/* Wall Boundaries Layer - Show walls defined in step 2 */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 15 }}>
+        {wallHighlights.filter(item => item.type === 'wall').map((wall, index) => (
+          <div
+            key={`wall-${index}`}
+            style={{
+              position: 'absolute',
+              left: wall.left,
+              top: wall.top,
+              width: wall.width,
+              height: wall.height,
+              backgroundColor: 'rgba(76, 175, 80, 0.7)', // Green with higher opacity
+              border: '1px solid white',
+              zIndex: 15
+            }}
           />
-          
-          {/* Draw the calibration points */}
-          {floorPlan.calibration.points.map((point, index) => (
-            <circle 
-              key={index}
-              cx={point.x}
-              cy={point.y}
-              r="4"
-              fill="rgba(0, 100, 255, 0.5)"
-            />
-          ))}
-        </svg>
-      )}
+        ))}
+        
+        {/* Other room features like doors, windows, etc. */}
+        {wallHighlights.filter(item => item.type !== 'wall').map((item, index) => (
+          <div
+            key={`room-feature-${index}`}
+            style={{
+              position: 'absolute',
+              left: item.left,
+              top: item.top,
+              width: item.width,
+              height: item.height,
+              backgroundColor: getHighlightColor(item.type),
+              border: '1px solid black',
+              zIndex: 15
+            }}
+          />
+        ))}
+      </div>
       
       {/* Display bagua map if enabled */}
-      {showBagua && isCalibrated && (
+      {showBagua && (
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 16 }}>
-          {Object.entries(bagua).map(([area, data]) => {
-            // Calculate bagua position based on percentages within the calibrated room
-            const roomX = data.x / roomWidth;
-            const roomY = data.y / roomLength;
-            const roomW = data.width / roomWidth;
-            const roomH = data.height / roomLength;
+          {Object.entries(bagua).map(([area, data], index) => {
+            // Position bagua areas relative to room boundaries
+            const baWidth = roomBoundaries.width / 3;
+            const baHeight = roomBoundaries.height / 3;
             
-            // Get the calibration points from the floor plan
-            const points = floorPlan.calibration.points;
+            // Calculate grid position (3x3 grid)
+            const row = Math.floor(index / 3);
+            const col = index % 3;
             
-            // Transform to image coordinates
-            const bagua1 = bilinearInterpolate(
-              points[0].x, points[1].x, 
-              points[3].x, points[2].x,
-              roomX, roomY
-            );
-            
-            const bagua2 = bilinearInterpolate(
-              points[0].y, points[1].y, 
-              points[3].y, points[2].y,
-              roomX, roomY
-            );
-            
-            const bagua3 = bilinearInterpolate(
-              points[0].x, points[1].x, 
-              points[3].x, points[2].x,
-              roomX + roomW, roomY + roomH
-            );
-            
-            const bagua4 = bilinearInterpolate(
-              points[0].y, points[1].y, 
-              points[3].y, points[2].y,
-              roomX + roomW, roomY + roomH
-            );
-            
-            const coords = {
-              x: bagua1,
-              y: bagua2,
-              width: bagua3 - bagua1,
-              height: bagua4 - bagua2
-            };
+            const baX = roomBoundaries.minX + (col * baWidth);
+            const baY = roomBoundaries.minY + (row * baHeight);
             
             return (
               <div
                 key={area}
                 className="absolute opacity-20"
                 style={{
-                  left: coords.x,
-                  top: coords.y,
-                  width: coords.width,
-                  height: coords.height,
+                  left: baX,
+                  top: baY,
+                  width: baWidth,
+                  height: baHeight,
                   backgroundColor: data.colors ? data.colors[0] : '#ccc',
                   border: '1px dashed #666'
                 }}
@@ -131,23 +234,12 @@ const FurnitureDisplay = ({
             zIndex: 30 
           }}
         >
-          {furniturePlacements.map((furniture) => {
-            // Transform furniture coordinates to image scale
-            const coords = transformWithCalibration(
-              furniture.x,
-              furniture.y, 
-              furniture.width, 
-              furniture.height,
-              isCalibrated,
-              floorPlan.calibration,
-              roomWidth,
-              roomLength,
-              imageSize,
-              bilinearInterpolate
-            );
+          {furniturePlacements.map((furniture, index) => {
+            // Position and scale the furniture based on room boundaries
+            const coords = positionFurniture(furniture, index, furniturePlacements.length);
             
             // Determine if this furniture has issues (from tradeoffs)
-            const hasIssues = layoutData.tradeoffs.some(t => t.item_id === furniture.item_id);
+            const hasIssues = layoutData.tradeoffs && layoutData.tradeoffs.some(t => t.item_id === furniture.item_id);
             const isSelected = selectedItem && selectedItem.item_id === furniture.item_id;
             
             return (
@@ -156,6 +248,8 @@ const FurnitureDisplay = ({
                 className="flex justify-center items-center cursor-pointer transition-all duration-200"
                 style={{
                   position: 'absolute',
+                  left: coords.x - (coords.width / 2), // Center the furniture
+                  top: coords.y - (coords.height / 2), // Center the furniture
                   width: coords.width,
                   height: coords.height,
                   backgroundColor: getFurnitureColor(furniture),
@@ -165,9 +259,9 @@ const FurnitureDisplay = ({
                       ? '2px dashed #f43f5e' 
                       : '2px solid #333',
                   borderRadius: '2px',
-                  transform: `translate(${coords.x}px, ${coords.y}px) rotate(${furniture.rotation || 0}deg)`,
+                  transform: `rotate(${furniture.rotation || 0}deg)`,
                   transformOrigin: 'center',
-                  fontSize: Math.max(10, Math.min(coords.width / 8, 16)),
+                  fontSize: Math.max(8, Math.min(coords.width / 10, 14)),
                   color: '#fff',
                   textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
                   overflow: 'hidden',
@@ -177,7 +271,10 @@ const FurnitureDisplay = ({
                     ? '0 0 10px rgba(59, 130, 246, 0.5)' 
                     : '0 2px 4px rgba(0,0,0,0.2)',
                   zIndex: isSelected ? 35 : 30,
-                  pointerEvents: 'auto'  // Make furniture clickable
+                  pointerEvents: 'auto',  // Make furniture clickable
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -254,6 +351,22 @@ const FurnitureDisplay = ({
       )}
     </>
   );
+};
+
+// Helper function to get the highlight color based on type
+const getHighlightColor = (type) => {
+  const highlightColors = {
+    wall: 'rgba(76, 175, 80, 0.7)', // Green with higher opacity
+    door: 'rgba(244, 67, 54, 0.5)',
+    window: 'rgba(33, 150, 243, 0.5)',
+    closet: 'rgba(156, 39, 176, 0.5)',
+    column: 'rgba(255, 152, 0, 0.5)',
+    fireplace: 'rgba(156, 39, 176, 0.5)',
+    radiator: 'rgba(121, 85, 72, 0.5)',
+    nofurniture: 'rgba(255, 235, 59, 0.3)'
+  };
+  
+  return highlightColors[type] || 'rgba(0, 0, 0, 0.3)';
 };
 
 export default FurnitureDisplay;

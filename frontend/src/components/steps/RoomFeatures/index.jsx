@@ -14,7 +14,8 @@ const RoomFeatures = ({ onNext, onBack }) => {
     highlights,
     removeHighlight,
     addHighlight,
-    initHighlightHistory
+    initHighlightHistory,
+    syncHighlightsToFloorPlan // Add the new function but keep the existing rendering
   } = useStore();
   
   const [isDetectingWalls, setIsDetectingWalls] = useState(false);
@@ -94,6 +95,12 @@ const RoomFeatures = ({ onNext, onBack }) => {
   const canvasWidth = floorPlan.dimensions?.width || 800;
   const canvasHeight = floorPlan.dimensions?.height || 600;
   
+  // Sync highlights before moving to next step
+  const handleNextWithSync = () => {
+    // Sync the highlights to floorPlan before moving to next step
+    syncHighlightsToFloorPlan();
+    onNext();
+  };
   
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -164,20 +171,17 @@ const RoomFeatures = ({ onNext, onBack }) => {
           </div>
         )}
 
-        {/* Canvas Container - Fixed size to match canvas dimensions */}
+        {/* Canvas Container - Keep original styling */}
         <div 
           className="flex justify-center items-center mb-4" 
           style={{ 
             width: '100%',
-            // height: canvasHeight,
             position: 'relative',
             overflow: 'hidden',
             backgroundColor: '#f8f9fa'
           }}
         >
-          {/* <HighlightCanvas width={canvasWidth} height={canvasHeight} /> */}
           <HighlightCanvas width={canvasWidth} height={canvasHeight} />
-
         </div>
       </div>
       
@@ -190,7 +194,7 @@ const RoomFeatures = ({ onNext, onBack }) => {
         </Button>
         
         <Button 
-          onClick={onNext}
+          onClick={handleNextWithSync}
           disabled={!hasWalls || !hasDimensions}
         >
           Continue to Step 3
